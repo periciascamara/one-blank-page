@@ -286,16 +286,33 @@ export default function CardEditorPage() {
               </h3>
 
               {/* Photo upload mock */}
-              <div className="flex items-center gap-4 py-2">
-                <div className="h-16 w-16 rounded-xl gradient-brand flex items-center justify-center text-white text-xl font-bold">
-                  {data.card.nome.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 py-2">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-xl gradient-brand flex items-center justify-center text-white text-xl font-bold shrink-0">
+                    {data.card.foto_url ? (
+                      <img src={data.card.foto_url} alt="Preview" className="h-full w-full object-cover rounded-xl" />
+                    ) : (
+                      data.card.nome.split(' ').map((n) => n[0]).join('').slice(0, 2)
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <button className="glass-button text-xs font-semibold text-brand-300 rounded-lg px-3.5 py-2 flex items-center gap-1.5">
+                      <Upload className="h-3.5 w-3.5" />
+                      Upload Local
+                    </button>
+                    <p className="text-[10px] text-text-tertiary">PNG/JPG até 5MB</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <button className="glass-button text-xs font-semibold text-brand-300 rounded-lg px-3.5 py-2 flex items-center gap-1.5">
-                    <Upload className="h-3.5 w-3.5" />
-                    Alterar Foto
-                  </button>
-                  <p className="text-[10px] text-text-tertiary">PNG ou JPG até 5MB</p>
+
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-[10px] font-semibold text-text-secondary uppercase">Ou URL da Imagem (Web)</label>
+                  <input
+                    type="text"
+                    placeholder="https://exemplo.com/foto.jpg"
+                    value={data.card.foto_url || ''}
+                    onChange={(e) => handleBasicChange('foto_url', e.target.value || null)}
+                    className="w-full rounded-lg border border-white/8 bg-surface-200/50 px-3 py-2 text-xs text-text-primary outline-none focus:border-brand-500/50"
+                  />
                 </div>
               </div>
 
@@ -480,7 +497,7 @@ export default function CardEditorPage() {
               {/* Redes Sociais */}
               <div className="space-y-3 border-b border-white/[0.06] pb-4">
                 <p className="text-xs font-medium text-text-secondary">Redes Sociais</p>
-                <div className="grid grid-cols-1 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="relative">
                     <Globe className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
                     <input
@@ -498,6 +515,36 @@ export default function CardEditorPage() {
                       placeholder="Instagram (URL)"
                       value={data.card.redes_sociais.instagram || ''}
                       onChange={(e) => handleSocialChange('instagram', e.target.value)}
+                      className="w-full rounded-xl border border-white/8 bg-surface-200/50 py-2.5 pl-10 pr-4 text-xs text-text-primary outline-none focus:border-brand-500/50"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Globe className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+                    <input
+                      type="text"
+                      placeholder="TikTok (URL)"
+                      value={data.card.redes_sociais.tiktok || ''}
+                      onChange={(e) => handleSocialChange('tiktok', e.target.value)}
+                      className="w-full rounded-xl border border-white/8 bg-surface-200/50 py-2.5 pl-10 pr-4 text-xs text-text-primary outline-none focus:border-brand-500/50"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Globe className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+                    <input
+                      type="text"
+                      placeholder="YouTube (URL)"
+                      value={data.card.redes_sociais.youtube || ''}
+                      onChange={(e) => handleSocialChange('youtube', e.target.value)}
+                      className="w-full rounded-xl border border-white/8 bg-surface-200/50 py-2.5 pl-10 pr-4 text-xs text-text-primary outline-none focus:border-brand-500/50"
+                    />
+                  </div>
+                  <div className="relative sm:col-span-2">
+                    <Globe className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+                    <input
+                      type="text"
+                      placeholder="Website Pessoal/Clínica (URL)"
+                      value={data.card.redes_sociais.site || ''}
+                      onChange={(e) => handleSocialChange('site', e.target.value)}
                       className="w-full rounded-xl border border-white/8 bg-surface-200/50 py-2.5 pl-10 pr-4 text-xs text-text-primary outline-none focus:border-brand-500/50"
                     />
                   </div>
@@ -584,7 +631,7 @@ export default function CardEditorPage() {
 
               {/* Layout Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-medium text-text-secondary">Tema do Layout</label>
+                <label className="text-xs font-medium text-text-secondary">Layout do Cartão</label>
                 <div className="grid grid-cols-3 gap-2.5">
                   {['minimalista', 'moderno', 'academico'].map((layoutOption) => {
                     const isLocked = layoutOption === 'academico' && isFeatureLocked('medio')
@@ -609,6 +656,36 @@ export default function CardEditorPage() {
                           </div>
                         )}
                         <span className="text-xs font-semibold capitalize">{layoutOption}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Theme Mode Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-text-secondary">Modo do Tema</label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { id: 'claro', label: 'Claro' },
+                    { id: 'escuro', label: 'Escuro' },
+                    { id: 'colorido', label: 'Colorido' },
+                  ].map((modeOption) => {
+                    const isSelected = (data.card.customizacao.tema_modo || 'escuro') === modeOption.id
+
+                    return (
+                      <button
+                        key={modeOption.id}
+                        type="button"
+                        onClick={() => handleCustomizationChange('tema_modo', modeOption.id)}
+                        className={cn(
+                          'flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-300',
+                          isSelected
+                            ? 'bg-brand-500/10 border-brand-500 text-brand-400 shadow-md shadow-brand-500/10'
+                            : 'bg-surface-200/50 border-white/5 text-text-secondary hover:bg-surface-200 hover:text-text-primary'
+                        )}
+                      >
+                        <span className="text-xs font-semibold">{modeOption.label}</span>
                       </button>
                     )
                   })}

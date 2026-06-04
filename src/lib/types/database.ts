@@ -24,6 +24,7 @@ export interface RedesSociais {
   instagram?: string
   tiktok?: string
   site?: string
+  youtube?: string
 }
 
 export interface Customizacao {
@@ -31,6 +32,7 @@ export interface Customizacao {
   cor_fundo?: string
   imagem_fundo_url?: string
   nfc_posicao?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  tema_modo?: 'claro' | 'escuro' | 'colorido'
 }
 
 export interface Profile {
