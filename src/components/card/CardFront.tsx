@@ -16,6 +16,7 @@ import { getInitials } from '@/lib/utils'
 
 interface CardFrontProps {
   data: PublicCardData
+  showQrCode?: boolean
 }
 
 function ContactButton({
@@ -64,7 +65,7 @@ function ContactButton({
   )
 }
 
-export function CardFront({ data }: CardFrontProps) {
+export function CardFront({ data, showQrCode = true }: CardFrontProps) {
   const { card, profile } = data
   const layout = card.layout
   const { contatos, nfc_ativo } = card
@@ -215,39 +216,41 @@ export function CardFront({ data }: CardFrontProps) {
         </div>
 
         {/* QR Code */}
-        <div
-          className={cn(
-            'flex flex-col items-center justify-center gap-2 rounded-xl p-4',
-            temaModo === 'claro'
-              ? 'bg-slate-100 border border-slate-200'
-              : layout === 'moderno'
-                ? 'bg-white/5 border border-white/10'
-                : layout === 'academico'
-                  ? 'bg-brand-500/5 border border-brand-500/10'
-                  : 'bg-white/[0.03] border border-white/[0.06]',
-          )}
-        >
-          <div className="relative flex items-center justify-center w-24 h-24">
-            <div
-              className={cn(
-                'absolute inset-0 rounded-lg',
-                layout === 'moderno' && temaModo !== 'claro' ? 'gradient-brand opacity-5' : 'bg-white/[0.02]',
-              )}
-            />
-            {qrCodeUrl ? (
-              <img
-                src={qrCodeUrl}
-                alt="QR Code do Perfil"
-                className="h-20 w-20 relative object-contain bg-white rounded-lg p-1 select-none"
-              />
-            ) : (
-              <div className="h-16 w-16 animate-pulse bg-white/10 rounded-lg" />
+        {showQrCode && (
+          <div
+            className={cn(
+              'flex flex-col items-center justify-center gap-2 rounded-xl p-4',
+              temaModo === 'claro'
+                ? 'bg-slate-100 border border-slate-200'
+                : layout === 'moderno'
+                  ? 'bg-white/5 border border-white/10'
+                  : layout === 'academico'
+                    ? 'bg-brand-500/5 border border-brand-500/10'
+                    : 'bg-white/[0.03] border border-white/[0.06]',
             )}
+          >
+            <div className="relative flex items-center justify-center w-24 h-24">
+              <div
+                className={cn(
+                  'absolute inset-0 rounded-lg',
+                  layout === 'moderno' && temaModo !== 'claro' ? 'gradient-brand opacity-5' : 'bg-white/[0.02]',
+                )}
+              />
+              {qrCodeUrl ? (
+                <img
+                  src={qrCodeUrl}
+                  alt="QR Code do Perfil"
+                  className="h-20 w-20 relative object-contain bg-white rounded-lg p-1 select-none"
+                />
+              ) : (
+                <div className="h-16 w-16 animate-pulse bg-white/10 rounded-lg" />
+              )}
+            </div>
+            <span className={cn('text-[10px] uppercase tracking-widest', tertiaryTextClass)}>
+              Escaneie para salvar
+            </span>
           </div>
-          <span className={cn('text-[10px] uppercase tracking-widest', tertiaryTextClass)}>
-            Escaneie para salvar
-          </span>
-        </div>
+        )}
       </div>
 
       {/* Contact buttons */}

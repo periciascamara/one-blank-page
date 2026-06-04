@@ -8,9 +8,10 @@ import { CardBack } from '@/components/card/CardBack'
 
 interface CardContainerProps {
   data: PublicCardData
+  showQrCode?: boolean
 }
 
-export function CardContainer({ data }: CardContainerProps) {
+export function CardContainer({ data, showQrCode = true }: CardContainerProps) {
   const [isFlipped, setIsFlipped] = useState(false)
 
   const handleFlip = useCallback(() => {
@@ -52,7 +53,7 @@ export function CardContainer({ data }: CardContainerProps) {
           style={{ minHeight: '600px' }}
         >
           <div className="card-face">
-            <CardFront data={data} />
+            <CardFront data={data} showQrCode={showQrCode} />
           </div>
           <div className="card-face card-face-back">
             <CardBack data={data} />

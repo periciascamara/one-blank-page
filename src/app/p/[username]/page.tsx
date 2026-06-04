@@ -219,7 +219,7 @@ export default async function PublicCardPage({ params }: PageProps) {
   return (
     <main className="min-h-dvh flex items-center justify-center bg-surface-0 p-4 sm:p-6">
       <div className="w-full max-w-md flex flex-col items-center animate-fade-in">
-        <CardContainer data={publicCardData} />
+        <CardContainer data={publicCardData} showQrCode={false} />
         <PublicShareBar username={username} />
       </div>
     </main>
