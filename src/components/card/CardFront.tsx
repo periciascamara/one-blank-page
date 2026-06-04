@@ -1,12 +1,13 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import QRCode from 'qrcode'
 import {
   Phone,
   Mail,
   MessageCircle,
   Wifi,
-  QrCode,
   ChevronDown,
 } from 'lucide-react'
 import type { PublicCardData } from '@/lib/types/database'
@@ -59,6 +60,28 @@ export function CardFront({ data }: CardFrontProps) {
   const { card, profile } = data
   const layout = card.layout
   const { contatos, nfc_ativo } = card
+
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}/p/${profile.username}`
+      
+      // Set color based on primary custom color, default to brand-500
+      const qrColor = card.customizacao?.cor_primaria || '#6366f1'
+      
+      QRCode.toDataURL(url, {
+        width: 256,
+        margin: 1,
+        color: {
+          dark: qrColor,
+          light: '#ffffff',
+        },
+      })
+        .then(setQrCodeUrl)
+        .catch((err) => console.error('Error generating QR in CardFront:', err))
+    }
+  }, [profile.username, card.customizacao?.cor_primaria])
 
   const containerStyles: Record<string, string> = {
     minimalista:
@@ -164,7 +187,7 @@ export function CardFront({ data }: CardFrontProps) {
           )}
         </div>
 
-        {/* QR Code Placeholder */}
+        {/* QR Code */}
         <div
           className={cn(
             'flex flex-col items-center justify-center gap-2 rounded-xl p-4',
@@ -182,13 +205,15 @@ export function CardFront({ data }: CardFrontProps) {
                 layout === 'moderno' ? 'gradient-brand opacity-5' : 'bg-white/[0.02]',
               )}
             />
-            <QrCode
-              className={cn(
-                'h-16 w-16 relative',
-                layout === 'academico' ? 'text-brand-400/60' : 'text-text-tertiary',
-              )}
-              strokeWidth={1}
-            />
+            {qrCodeUrl ? (
+              <img
+                src={qrCodeUrl}
+                alt="QR Code do Perfil"
+                className="h-20 w-20 relative object-contain bg-white rounded-lg p-1 select-none"
+              />
+            ) : (
+              <div className="h-16 w-16 animate-pulse bg-white/10 rounded-lg" />
+            )}
           </div>
           <span className="text-[10px] uppercase tracking-widest text-text-tertiary">
             Escaneie para salvar

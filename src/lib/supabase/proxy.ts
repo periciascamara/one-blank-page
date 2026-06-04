@@ -39,7 +39,9 @@ export async function updateSession(request: NextRequest) {
   const isLoginRoute = request.nextUrl.pathname === '/login' ||
     request.nextUrl.pathname === '/register'
 
-  if (!user && isAuthRoute) {
+  const isPlaceholder = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('SEU-PROJETO')
+
+  if (!user && isAuthRoute && !isPlaceholder) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

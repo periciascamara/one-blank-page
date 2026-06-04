@@ -11,6 +11,7 @@ import type {
 } from '@/lib/types/database'
 import { CardContainer } from '@/components/card/CardContainer'
 import { SleepingCard } from '@/components/card/SleepingCard'
+import { PublicShareBar } from '@/components/card/PublicShareBar'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -217,8 +218,9 @@ export default async function PublicCardPage({ params }: PageProps) {
 
   return (
     <main className="min-h-dvh flex items-center justify-center bg-surface-0 p-4 sm:p-6">
-      <div className="w-full max-w-md animate-fade-in">
+      <div className="w-full max-w-md flex flex-col items-center animate-fade-in">
         <CardContainer data={publicCardData} />
+        <PublicShareBar username={username} />
       </div>
     </main>
   )
