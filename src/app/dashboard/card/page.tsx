@@ -17,6 +17,7 @@ import {
   Upload,
   Save,
   Check,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CardFront } from '@/components/card/CardFront'
@@ -71,7 +72,7 @@ const mockInitialData: PublicCardData = {
   portfolio_links: [],
 }
 
-type TabType = 'basico' | 'contatos' | 'formacao' | 'links' | 'aparencia'
+type TabType = 'basico' | 'contatos' | 'formacao' | 'links' | 'badges' | 'aparencia'
 
 export default function CardEditorPage() {
   const [activeTab, setActiveTab] = useState<TabType>('basico')
@@ -93,6 +94,31 @@ export default function CardEditorPage() {
   const [newAno, setNewAno] = useState('')
 
   const userPlan = data.profile.plano
+
+  const togglePresetBadge = (label: string, codigo: string) => {
+    setData((prev) => {
+      const exists = prev.badges.some((b) => b.label === label)
+      if (exists) {
+        return {
+          ...prev,
+          badges: prev.badges.filter((b) => b.label !== label),
+        }
+      } else {
+        const newBadge: Badge = {
+          id: `b-preset-${Date.now()}`,
+          user_id: prev.card.user_id,
+          label,
+          codigo,
+          ativo: true,
+          created_at: new Date().toISOString(),
+        }
+        return {
+          ...prev,
+          badges: [...prev.badges, newBadge],
+        }
+      }
+    })
+  }
 
   const isFeatureLocked = (featurePlan: PlanoEnum) => {
     if (userPlan === 'completo') return false
@@ -238,6 +264,7 @@ export default function CardEditorPage() {
     { id: 'contatos', label: 'Contatos', icon: Phone },
     { id: 'formacao', label: 'Formação', icon: GraduationCap },
     { id: 'links', label: 'Links', icon: LinkIcon },
+    { id: 'badges', label: 'Badges', icon: Shield },
     { id: 'aparencia', label: 'Aparência', icon: Palette },
   ]
 
@@ -616,6 +643,83 @@ export default function CardEditorPage() {
                     <Plus className="h-3.5 w-3.5" />
                     Adicionar Link
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: Badges & Competências */}
+          {activeTab === 'badges' && (
+            <div className="space-y-5">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Shield className="h-4 w-4 text-brand-400" />
+                Badges & Competências Médicas
+              </h3>
+
+              {/* 9 Domínios de Competência */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-text-secondary">9 Domínios de Competência do Médico</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[220px] overflow-y-auto pr-1">
+                  {[
+                    { label: 'Competência Clínica (15%)', code: 'DOM-CLINIC' },
+                    { label: 'Atividade Pericial (15%)', code: 'DOM-EXPERT' },
+                    { label: 'Tecnologia & Ferramentas (10%)', code: 'DOM-TECH' },
+                    { label: 'Produção Acadêmica (10%)', code: 'DOM-ACADEMIC' },
+                    { label: 'Comunicação & Colaboração (10%)', code: 'DOM-COMM' },
+                    { label: 'Gestão, Liderança & Sistemas', code: 'DOM-MGMT' },
+                    { label: 'Finanças Pessoais & Capital', code: 'DOM-FIN' },
+                    { label: 'Bem-estar & Profissionalismo', code: 'DOM-WELL' },
+                    { label: 'Networking, Mentoria & Reputação (10%)', code: 'DOM-NET' },
+                  ].map((dom) => {
+                    const isActive = data.badges.some((b) => b.label === dom.label)
+                    return (
+                      <button
+                        key={dom.code}
+                        type="button"
+                        onClick={() => togglePresetBadge(dom.label, dom.code)}
+                        className={cn(
+                          'flex items-center justify-between p-2.5 rounded-xl border text-left transition-all duration-250 text-xs',
+                          isActive
+                            ? 'bg-brand-500/10 border-brand-500/40 text-brand-300'
+                            : 'bg-surface-200/50 border-white/5 text-text-secondary hover:bg-surface-200 hover:text-text-primary'
+                        )}
+                      >
+                        <span className="font-medium">{dom.label}</span>
+                        <span className={cn('h-2 w-2 rounded-full', isActive ? 'bg-brand-400' : 'bg-white/10')} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Competências de Nível Avançado */}
+              <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+                <p className="text-xs font-semibold text-text-secondary">Competências de Nível Avançado (Badges Premium)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { label: 'Perito Judicial', code: 'EXP-JUDICIAL' },
+                    { label: 'Rede Room Sala Vermelha', code: 'EXP-SALAVERMELHA' },
+                    { label: 'IA Frontier (Inteligência Artificial)', code: 'EXP-IAFRONTIER' },
+                    { label: 'Suporte Avançado de Vida (ACLS)', code: 'EXP-ACLS' },
+                  ].map((badge) => {
+                    const isActive = data.badges.some((b) => b.label === badge.label)
+                    return (
+                      <button
+                        key={badge.code}
+                        type="button"
+                        onClick={() => togglePresetBadge(badge.label, badge.code)}
+                        className={cn(
+                          'flex items-center justify-between p-2.5 rounded-xl border text-left transition-all duration-250 text-xs',
+                          isActive
+                            ? 'bg-accent-500/10 border-accent-500/40 text-accent-300'
+                            : 'bg-surface-200/50 border-white/5 text-text-secondary hover:bg-surface-200 hover:text-text-primary'
+                        )}
+                      >
+                        <span className="font-semibold">{badge.label}</span>
+                        <span className={cn('h-2 w-2 rounded-full', isActive ? 'bg-accent-400' : 'bg-white/10')} />
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
