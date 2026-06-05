@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -15,19 +15,14 @@ import {
   Crown,
   Sparkles,
   Shield,
+  Loader2,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/lib/utils'
 import type { PlanoEnum } from '@/lib/types/database'
 
-// Mock user data
-const mockUser = {
-  nome: 'Dr. Rafael Moraes',
-  email: 'rafael@exemplo.com',
-  username: 'dr-rafael-moraes',
-  plano: 'medio' as PlanoEnum,
-  foto_url: null as string | null,
-}
+// Real user data is fetched via Supabase below
 
 const navItems = [
   { href: '/dashboard', label: 'Visão Geral', icon: LayoutDashboard },
@@ -64,7 +59,59 @@ export default function DashboardLayout({
 }>) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  
+  const [currentUser, setCurrentUser] = useState<{
+    nome: string
+    email: string
+    username: string
+    plano: PlanoEnum
+    foto_url: string | null
+  } | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
+  useEffect(() => {
+    async function loadProfile() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        window.location.href = '/login'
+        return
+      }
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      const profile = profileData as any
+
+      if (profile) {
+        setCurrentUser({
+          nome: profile.nome || 'Usuário',
+          email: session.user.email || '',
+          username: profile.username || '',
+          plano: (profile.plano as PlanoEnum) || 'simples',
+          foto_url: profile.foto_url,
+        })
+      }
+      setIsLoading(false)
+    }
+    loadProfile()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-surface-0">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    )
+  }
+
+  if (!currentUser) return null
+
+  const mockUser = currentUser
   const plan = planConfig[mockUser.plano]
   const PlanIcon = plan.icon
 

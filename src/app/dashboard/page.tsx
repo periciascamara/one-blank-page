@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { createClient } from '@/lib/supabase/client'
 import {
   Eye,
   MousePointerClick,
@@ -25,34 +26,12 @@ import {
   History,
   Clock,
   BarChart3,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { StatusEnum, PlanoEnum, LayoutEnum } from '@/lib/types/database'
 
-// Mock data
-const mockUser = {
-  nome: 'Dr. Rafael Moraes',
-  username: 'dr-rafael-moraes',
-  plano: 'medio' as PlanoEnum,
-  dataContratacao: '15/01/2025',
-  fimAnuidade: '15/01/2027',
-}
-
-const mockCard = {
-  nome: 'Dr. Rafael Moraes',
-  titulo: 'Cardiologista | Perito Médico',
-  foto_url: null as string | null,
-  status: 'ativo' as StatusEnum,
-  layout: 'moderno' as LayoutEnum,
-  especialidades: ['Cardiologia', 'Perícia Médica'],
-  contatos: {
-    telefone: '(11) 98765-4321',
-    email: 'rafael@exemplo.com',
-  },
-  customizacao: {
-    cor_primaria: '#6366f1',
-  },
-}
+// Mock data removed: Real data is fetched via Supabase
 
 const mockStats = {
   visualizacoes: 1247,
@@ -140,13 +119,78 @@ const item = {
 }
 
 export default function DashboardPage() {
-  const [cardStatus, setCardStatus] = useState<StatusEnum>(mockCard.status)
+  const [cardStatus, setCardStatus] = useState<StatusEnum>('ativo')
   const [copied, setCopied] = useState(false)
   const [clickPeriod, setClickPeriod] = useState<'7d' | '30d' | '90d'>('7d')
   const [linkPeriod, setLinkPeriod] = useState<'7d' | '30d'>('30d')
   const [socialPeriod, setSocialPeriod] = useState<'7d' | '30d'>('30d')
+  
+  const [isLoading, setIsLoading] = useState(true)
+  const [mockUser, setMockUser] = useState<any>(null)
+  const [mockCard, setMockCard] = useState<any>(null)
 
-  const profileUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${mockUser.username}`
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) return
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      const { data: cardData } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single()
+
+      const profile = profileData as any
+      const card = cardData as any
+
+      if (profile) {
+        setMockUser({
+          nome: profile.nome || 'Usuário',
+          username: profile.username || '',
+          plano: (profile.plano as PlanoEnum) || 'simples',
+          dataContratacao: new Date(profile.created_at).toLocaleDateString('pt-BR'),
+          fimAnuidade: new Date(new Date(profile.created_at).setFullYear(new Date(profile.created_at).getFullYear() + 1)).toLocaleDateString('pt-BR'),
+        })
+      }
+
+      if (card) {
+        setMockCard({
+          nome: card.titulo ? profile.nome : (profile.nome || 'Sem Nome'),
+          titulo: card.titulo || 'Adicione um título',
+          foto_url: card.foto_url,
+          status: (card.status as StatusEnum) || 'ativo',
+          layout: (card.layout as LayoutEnum) || 'moderno',
+          especialidades: card.especialidades || [],
+          contatos: card.contatos || {},
+          customizacao: card.customizacao || { cor_primaria: '#6366f1' },
+        })
+        setCardStatus((card.status as StatusEnum) || 'ativo')
+      } else {
+        setMockCard({
+          nome: profile?.nome || 'Usuário',
+          titulo: 'Configure seu cartão digital',
+          foto_url: null,
+          status: 'ativo' as StatusEnum,
+          layout: 'moderno' as LayoutEnum,
+          especialidades: ['Adicione suas especialidades'],
+          contatos: {},
+          customizacao: { cor_primaria: '#6366f1' },
+        })
+      }
+      setIsLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  const profileUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${mockUser?.username || ''}`
 
   const handleCopyLink = async () => {
     try {
@@ -158,9 +202,26 @@ export default function DashboardPage() {
     }
   }
 
-  const toggleStatus = () => {
-    setCardStatus((prev) => (prev === 'ativo' ? 'dormindo' : 'ativo'))
+  const toggleStatus = async () => {
+    const newStatus = cardStatus === 'ativo' ? 'dormindo' : 'ativo'
+    setCardStatus(newStatus)
+    
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      await (supabase.from('cards').update as any)({ status: newStatus }).eq('user_id', session.user.id)
+    }
   }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full min-h-[400px] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    )
+  }
+
+  if (!mockUser || !mockCard) return null
 
   const handleExportCSV = () => {
     const today = new Date().toISOString().split('T')[0]
@@ -383,7 +444,7 @@ export default function DashboardPage() {
                     />
                   ) : (
                     <div className="flex h-20 w-20 items-center justify-center rounded-xl gradient-brand text-white text-2xl font-bold ring-2 ring-brand-500/20">
-                      {mockCard.nome.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      {mockCard.nome.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                     </div>
                   )}
 
@@ -397,7 +458,7 @@ export default function DashboardPage() {
 
                     {/* Specialties */}
                     <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
-                      {mockCard.especialidades.map((esp) => (
+                      {mockCard.especialidades.map((esp: string) => (
                         <span
                           key={esp}
                           className="rounded-full bg-brand-500/10 border border-brand-500/20 px-3 py-0.5 text-xs font-medium text-brand-300"
