@@ -199,7 +199,7 @@ export default function CardEditorPage() {
     
     try {
       const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      const supabase = createClient() as any
       
       let cardId = data.card.id
       
