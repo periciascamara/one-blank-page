@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
@@ -18,11 +18,8 @@ import {
 import { cn } from '@/lib/utils'
 
 export default function SettingsPage() {
-  // Mock account data
-  const [accountInfo] = useState({
-    nome: 'Dr. Rafael Moraes',
-    email: 'rafael@exemplo.com',
-  })
+  const [accountInfo, setAccountInfo] = useState<{nome: string, email: string, plano: string} | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('')
@@ -43,29 +40,104 @@ export default function SettingsPage() {
   const [deleteConfirmationInput, setDeleteConfirmationInput] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        if (profile) {
+          setAccountInfo({
+            nome: profile.nome || user.email?.split('@')[0] || '',
+            email: user.email || '',
+            plano: profile.plano || 'simples'
+          })
+
+          const { data: card } = await supabase.from('cards').select('status').eq('user_id', profile.id).maybeSingle()
+          if (card && card.status) {
+            setCardStatus(card.status)
+          }
+        }
+      } catch (err) {
+        console.error('Error loading settings', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) return
     setIsChangingPassword(true)
 
-    setTimeout(() => {
-      setIsChangingPassword(false)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (error) throw error
+
       setPasswordChangeSuccess(true)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       setTimeout(() => setPasswordChangeSuccess(false), 2000)
-    }, 1200)
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao alterar senha. Verifique se a senha atual está correta.')
+    } finally {
+      setIsChangingPassword(false)
+    }
   }
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (deleteConfirmationInput !== 'EXCLUIR') return
     setIsDeleting(true)
-    setTimeout(() => {
+    
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // Apenas marca o cartão como apagado, para evitar quebra de integridade
+        await supabase.from('cards').update({ status: 'apagado' }).eq('user_id', user.id)
+        alert('Cartão desativado permanentemente. Para exclusão total dos dados, entre em contato com o suporte.')
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
       setIsDeleting(false)
       setShowDeleteModal(false)
-      alert('Conta excluída (mock)')
-    }, 1500)
+      setDeleteConfirmationInput('')
+    }
+  }
+
+  const handleStatusChange = async (newStatus: 'ativo' | 'dormindo' | 'apagado') => {
+    setCardStatus(newStatus)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('cards').update({ status: newStatus }).eq('user_id', user.id)
+      }
+    } catch (err) {}
+  }
+
+  if (isLoading || !accountInfo) {
+    return (
+      <div className="flex h-[400px] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    )
   }
 
   return (
@@ -82,17 +154,17 @@ export default function SettingsPage() {
         <div className="md:col-span-1 space-y-4">
           <div className="glass-card rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full gradient-brand flex items-center justify-center text-white text-sm font-bold">
-                RM
+              <div className="h-10 w-10 rounded-full gradient-brand flex items-center justify-center text-white text-sm font-bold uppercase">
+                {accountInfo.nome.substring(0, 2)}
               </div>
               <div>
-                <h3 className="text-sm font-bold text-text-primary">{accountInfo.nome}</h3>
-                <p className="text-[11px] text-text-tertiary">{accountInfo.email}</p>
+                <h3 className="text-sm font-bold text-text-primary truncate max-w-[150px]">{accountInfo.nome}</h3>
+                <p className="text-[11px] text-text-tertiary truncate max-w-[150px]">{accountInfo.email}</p>
               </div>
             </div>
             <div className="border-t border-white/[0.06] pt-3 flex items-center justify-between text-xs text-text-secondary">
               <span>Plano Atual:</span>
-              <span className="font-semibold text-brand-400">Médio</span>
+              <span className="font-semibold text-brand-400 capitalize">{accountInfo.plano}</span>
             </div>
           </div>
         </div>
@@ -222,7 +294,7 @@ export default function SettingsPage() {
                 return (
                   <button
                     key={statusOption.id}
-                    onClick={() => setCardStatus(statusOption.id as any)}
+                    onClick={() => handleStatusChange(statusOption.id as any)}
                     className={cn(
                       'flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-300',
                       isSelected

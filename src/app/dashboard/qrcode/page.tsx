@@ -7,7 +7,7 @@ import QRCode from 'qrcode'
 import { cn } from '@/lib/utils'
 
 export default function QrCodePage() {
-  const mockUsername = 'dr-rafael-moraes'
+  const [username, setUsername] = useState('')
   const [profileUrl, setProfileUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [qrColor, setQrColor] = useState('#6366f1')
@@ -16,9 +16,25 @@ export default function QrCodePage() {
   const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setProfileUrl(`${window.location.origin}/p/${mockUsername}`)
+    const loadUsername = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
+        if (profile && profile.username) {
+          setUsername(profile.username)
+          if (typeof window !== 'undefined') {
+            setProfileUrl(`${window.location.origin}/p/${profile.username}`)
+          }
+        }
+      } catch(err) {
+        console.error(err)
+      }
     }
+    loadUsername()
   }, [])
 
   // Generate QR Code when colors or URL change
@@ -74,7 +90,7 @@ export default function QrCodePage() {
       (err, url) => {
         if (err) return console.error(err)
         const link = document.createElement('a')
-        link.download = `qrcode-${mockUsername}.png`
+        link.download = `qrcode-${username}.png`
         link.href = url
         link.click()
       }
@@ -94,7 +110,7 @@ export default function QrCodePage() {
       const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
-      link.download = `qrcode-${mockUsername}.svg`
+      link.download = `qrcode-${username}.svg`
       link.href = url
       link.click()
       URL.revokeObjectURL(url)

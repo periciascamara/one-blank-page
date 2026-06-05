@@ -24,75 +24,27 @@ import { CardFront } from '@/components/card/CardFront'
 import { CardBack } from '@/components/card/CardBack'
 import type { Card, Badge, LinktreeLink, PublicCardData, PlanoEnum, StatusEnum } from '@/lib/types/database'
 
-// Mock initial data
-const mockInitialData: PublicCardData = {
-  profile: {
-    username: 'dr-rafael-moraes',
-    plano: 'medio' as PlanoEnum,
-  },
-  card: {
-    id: 'card-1',
-    user_id: 'user-1',
-    nome: 'Dr. Rafael Moraes',
-    titulo: 'Cardiologista | Perito Médico',
-    foto_url: null,
-    status: 'ativo' as StatusEnum,
-    especialidades: ['Cardiologia', 'Perícia Médica'],
-    formacao: [
-      { grau: 'Medicina', instituicao: 'USP', ano: '2016' },
-      { grau: 'Residência em Cardiologia', instituicao: 'InCor USP', ano: '2019' },
-    ],
-    contatos: {
-      telefone: '(11) 98765-4321',
-      whatsapp: '(11) 98765-4321',
-      email: 'rafael@exemplo.com',
-    },
-    redes_sociais: {
-      linkedin: 'https://linkedin.com/in/dr-rafael-moraes',
-      instagram: 'https://instagram.com/dr-rafael-moraes',
-    },
-    layout: 'moderno',
-    customizacao: {
-      cor_primaria: '#6366f1',
-      cor_fundo: '#09090b',
-    },
-    nfc_ativo: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-  },
-  badges: [
-    { id: '1', user_id: 'user-1', label: 'CRM Ativo SP 123456', codigo: 'crm', ativo: true, meta_percentual: 90, created_at: '' },
-    { id: '2', user_id: 'user-1', label: 'RQE Registro de Especialista', codigo: 'rqe', ativo: true, meta_percentual: 55, created_at: '' },
-  ],
-  linktree_links: [
-    { id: 'l1', user_id: 'user-1', label: 'Agendar Consulta (Doctoralia)', url: 'https://doctoralia.com.br', ativo: true, ordem: 0, created_at: '' },
-    { id: 'l2', user_id: 'user-1', label: 'Artigos Publicados', url: 'https://pubmed.ncbi.nlm.nih.gov', ativo: true, ordem: 1, created_at: '' },
-  ],
-  portfolio_links: [],
-}
+import type { LayoutEnum } from '@/lib/types/database'
 
 type TabType = 'basico' | 'contatos' | 'formacao' | 'links' | 'badges' | 'aparencia'
 
 export default function CardEditorPage() {
   const [activeTab, setActiveTab] = useState<TabType>('basico')
-  const [data, setData] = useState<PublicCardData>(mockInitialData)
+  const [data, setData] = useState<PublicCardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [showPreviewBack, setShowPreviewBack] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
   // Sync edited card data to localStorage for real-time update in open public card preview tabs
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined' || !data) return
     localStorage.setItem(`oneblankpage_preview_${data.profile.username}`, JSON.stringify(data))
   }, [data])
 
-  // Load actual Supabase card data on mount if connection keys are set
+  // Load actual Supabase card data on mount
   useEffect(() => {
     const loadUserData = async () => {
-      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('SEU-PROJETO')
-      if (isPlaceholder) return
-
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
@@ -111,20 +63,20 @@ export default function CardEditorPage() {
             .from('cards')
             .select('*')
             .eq('user_id', profile.id)
-            .single()) as { data: any }
+            .maybeSingle()) as { data: any }
+
+          const { data: badges } = (await supabase
+            .from('badges')
+            .select('*')
+            .eq('user_id', profile.id)) as { data: any[] | null }
+
+          const { data: linktree_links } = (await supabase
+            .from('linktree_links')
+            .select('*')
+            .eq('user_id', profile.id)
+            .order('ordem', { ascending: true })) as { data: any[] | null }
 
           if (card) {
-            const { data: badges } = (await supabase
-              .from('badges')
-              .select('*')
-              .eq('user_id', profile.id)) as { data: any[] | null }
-
-            const { data: linktree_links } = (await supabase
-              .from('linktree_links')
-              .select('*')
-              .eq('user_id', profile.id)
-              .order('ordem', { ascending: true })) as { data: any[] | null }
-
             const rawFormacao = Array.isArray(card.formacao) ? card.formacao : JSON.parse((card.formacao as any) || '[]')
             const rawEspecialidades = Array.isArray(card.especialidades) ? card.especialidades : JSON.parse((card.especialidades as any) || '[]')
             const rawContatos = (typeof card.contatos === 'object' && card.contatos) ? card.contatos : JSON.parse((card.contatos as any) || '{}')
@@ -148,10 +100,38 @@ export default function CardEditorPage() {
               linktree_links: linktree_links || [],
               portfolio_links: [],
             })
+          } else {
+            // New user, create empty card state
+            setData({
+              profile: { username: profile.username, plano: profile.plano },
+              card: {
+                id: '', // Empty means new
+                user_id: profile.id,
+                nome: profile.nome || '',
+                titulo: '',
+                foto_url: null,
+                status: 'ativo' as StatusEnum,
+                layout: 'moderno' as LayoutEnum,
+                especialidades: [],
+                formacao: [],
+                contatos: {},
+                redes_sociais: {},
+                customizacao: { cor_primaria: '#6366f1', cor_fundo: '#09090b' },
+                nfc_ativo: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                deleted_at: null,
+              },
+              badges: badges || [],
+              linktree_links: linktree_links || [],
+              portfolio_links: [],
+            })
           }
         }
       } catch (err) {
         console.error('Error loading card data from Supabase:', err)
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -170,10 +150,11 @@ export default function CardEditorPage() {
   const [newInst, setNewInst] = useState('')
   const [newAno, setNewAno] = useState('')
 
-  const userPlan = data.profile.plano
+  const userPlan = data?.profile?.plano || 'simples'
 
   const togglePresetBadge = (label: string, codigo: string) => {
     setData((prev) => {
+      if (!prev) return prev
       const exists = prev.badges.some((b) => b.label === label)
       if (exists) {
         return {
@@ -199,10 +180,10 @@ export default function CardEditorPage() {
   }
 
   const handleBadgeProgressChange = (id: string, value: number) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       badges: prev.badges.map((b) => (b.id === id ? { ...b, meta_percentual: value } : b)),
-    }))
+    }) : null)
   }
 
   const isFeatureLocked = (featurePlan: PlanoEnum) => {
@@ -213,16 +194,42 @@ export default function CardEditorPage() {
   }
 
   const handleSave = async () => {
+    if (!data) return
     setIsSaving(true)
     
-    const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('SEU-PROJETO')
-    
-    if (!isPlaceholder) {
-      try {
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient() as any
-        
-        // 1. Update Card in DB
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient() as any
+      
+      let cardId = data.card.id
+      
+      // 1. Save Card in DB
+      if (!cardId) {
+        // Insert new
+        const { data: newCard, error: insertError } = await supabase
+          .from('cards')
+          .insert({
+            user_id: data.card.user_id,
+            nome: data.card.nome,
+            titulo: data.card.titulo,
+            foto_url: data.card.foto_url,
+            layout: data.card.layout,
+            contatos: data.card.contatos,
+            redes_sociais: data.card.redes_sociais,
+            especialidades: data.card.especialidades,
+            formacao: data.card.formacao,
+            customizacao: data.card.customizacao,
+            nfc_ativo: data.card.nfc_ativo,
+            status: data.card.status,
+          })
+          .select()
+          .single()
+          
+        if (insertError) throw insertError
+        cardId = newCard.id
+        setData((prev) => prev ? { ...prev, card: { ...prev.card, id: cardId } } : null)
+      } else {
+        // Update existing
         const { error: cardError } = await supabase
           .from('cards')
           .update({
@@ -238,136 +245,130 @@ export default function CardEditorPage() {
             nfc_ativo: data.card.nfc_ativo,
             status: data.card.status,
           })
-          .eq('id', data.card.id)
+          .eq('id', cardId)
 
         if (cardError) throw cardError
-
-        // 2. Synchronize active Badges
-        await supabase
-          .from('badges')
-          .delete()
-          .eq('user_id', data.card.user_id)
-
-        if (data.badges.length > 0) {
-          const { error: badgesError } = await supabase
-            .from('badges')
-            .insert(
-              data.badges.map((b) => ({
-                user_id: data.card.user_id,
-                label: b.label,
-                codigo: b.codigo,
-                ativo: b.ativo,
-                meta_percentual: b.meta_percentual,
-              }))
-            )
-          if (badgesError) throw badgesError
-        }
-
-        // 3. Synchronize active Linktree links
-        await supabase
-          .from('linktree_links')
-          .delete()
-          .eq('user_id', data.card.user_id)
-
-        if (data.linktree_links.length > 0) {
-          const { error: linksError } = await supabase
-            .from('linktree_links')
-            .insert(
-              data.linktree_links.map((l) => ({
-                user_id: data.card.user_id,
-                label: l.label,
-                url: l.url,
-                ordem: l.ordem,
-                ativo: l.ativo,
-              }))
-            )
-          if (linksError) throw linksError
-        }
-
-        setSavedSuccess(true)
-        setTimeout(() => setSavedSuccess(false), 2000)
-      } catch (err) {
-        console.error('Error saving card details to Supabase:', err)
-        alert('Erro ao salvar no Supabase. As alterações foram salvas localmente.')
-        setSavedSuccess(true)
-        setTimeout(() => setSavedSuccess(false), 2000)
-      } finally {
-        setIsSaving(false)
       }
-    } else {
-      setTimeout(() => {
-        setIsSaving(false)
-        setSavedSuccess(true)
-        setTimeout(() => setSavedSuccess(false), 2000)
-      }, 1000)
+
+      // 2. Synchronize active Badges
+      await supabase
+        .from('badges')
+        .delete()
+        .eq('user_id', data.card.user_id)
+
+      if (data.badges.length > 0) {
+        const { error: badgesError } = await supabase
+          .from('badges')
+          .insert(
+            data.badges.map((b) => ({
+              user_id: data.card.user_id,
+              label: b.label,
+              codigo: b.codigo,
+              ativo: b.ativo,
+              meta_percentual: b.meta_percentual,
+            }))
+          )
+        if (badgesError) throw badgesError
+      }
+
+      // 3. Synchronize active Linktree links
+      await supabase
+        .from('linktree_links')
+        .delete()
+        .eq('user_id', data.card.user_id)
+
+      if (data.linktree_links.length > 0) {
+        const { error: linksError } = await supabase
+          .from('linktree_links')
+          .insert(
+            data.linktree_links.map((l) => ({
+              user_id: data.card.user_id,
+              label: l.label,
+              url: l.url,
+              ordem: l.ordem,
+              ativo: l.ativo,
+            }))
+          )
+        if (linksError) throw linksError
+      }
+
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 2000)
+    } catch (err) {
+      console.error('Error saving card details to Supabase:', err)
+      alert('Erro ao salvar no Supabase. As alterações foram salvas localmente.')
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 2000)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const handleBasicChange = (field: keyof Card, value: any) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: { ...prev.card, [field]: value },
-    }))
+    }) : null)
   }
 
   const handleContactChange = (field: keyof Card['contatos'], value: string) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
         contatos: { ...prev.card.contatos, [field]: value },
       },
-    }))
+    }) : null)
   }
 
   const handleSocialChange = (field: keyof Card['redes_sociais'], value: string) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
         redes_sociais: { ...prev.card.redes_sociais, [field]: value },
       },
-    }))
+    }) : null)
   }
 
   const handleCustomizationChange = (field: keyof Card['customizacao'], value: string) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
         customizacao: { ...prev.card.customizacao, [field]: value },
       },
-    }))
+    }) : null)
   }
 
   // Specialty handlers
   const addSpecialty = () => {
-    if (!newSpecialty.trim()) return
+    if (!newSpecialty.trim() || !data) return
     if (data.card.especialidades.includes(newSpecialty.trim())) return
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
         especialidades: [...prev.card.especialidades, newSpecialty.trim()],
       },
-    }))
+    }) : null)
     setNewSpecialty('')
   }
 
   const removeSpecialty = (spec: string) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
         especialidades: prev.card.especialidades.filter((s) => s !== spec),
       },
-    }))
+    }) : null)
   }
 
   // Formacao handlers
   const addFormacao = () => {
-    if (!newGrau.trim() || !newInst.trim()) return
-    setData((prev) => ({
+    if (!newGrau.trim() || !newInst.trim() || !data) return
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
@@ -376,25 +377,25 @@ export default function CardEditorPage() {
           { grau: newGrau.trim(), instituicao: newInst.trim(), ano: newAno.trim() || undefined },
         ],
       },
-    }))
+    }) : null)
     setNewGrau('')
     setNewInst('')
     setNewAno('')
   }
 
   const removeFormacao = (idx: number) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       card: {
         ...prev.card,
         formacao: prev.card.formacao.filter((_, i) => i !== idx),
       },
-    }))
+    }) : null)
   }
 
   // Linktree handlers
   const addLink = () => {
-    if (!newLinkLabel.trim() || !newLinkUrl.trim()) return
+    if (!newLinkLabel.trim() || !newLinkUrl.trim() || !data) return
     const newLink: LinktreeLink = {
       id: `l-new-${Date.now()}`,
       user_id: data.card.user_id,
@@ -404,26 +405,26 @@ export default function CardEditorPage() {
       ordem: data.linktree_links.length,
       created_at: new Date().toISOString(),
     }
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       linktree_links: [...prev.linktree_links, newLink],
-    }))
+    }) : null)
     setNewLinkLabel('')
     setNewLinkUrl('')
   }
 
   const toggleLinkActive = (id: string) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       linktree_links: prev.linktree_links.map((l) => (l.id === id ? { ...l, ativo: !l.ativo } : l)),
-    }))
+    }) : null)
   }
 
   const deleteLink = (id: string) => {
-    setData((prev) => ({
+    setData((prev) => prev ? ({
       ...prev,
       linktree_links: prev.linktree_links.filter((l) => l.id !== id),
-    }))
+    }) : null)
   }
 
   const tabs = [
@@ -434,6 +435,14 @@ export default function CardEditorPage() {
     { id: 'badges', label: 'Badges', icon: Shield },
     { id: 'aparencia', label: 'Aparência', icon: Palette },
   ]
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex h-[400px] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
