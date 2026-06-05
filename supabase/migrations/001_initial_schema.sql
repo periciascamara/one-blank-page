@@ -95,6 +95,7 @@ CREATE TABLE badges (
   label     TEXT NOT NULL,
   codigo    TEXT,
   ativo     BOOLEAN NOT NULL DEFAULT true,
+  meta_percentual INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

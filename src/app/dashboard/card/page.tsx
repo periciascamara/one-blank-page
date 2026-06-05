@@ -274,6 +274,7 @@ export default function CardEditorPage() {
               label: b.label,
               codigo: b.codigo || null,
               ativo: b.ativo,
+              meta_percentual: b.meta_percentual || null,
             }))
           )
         if (badgesError) throw new Error(`Erro ao inserir badges: ${badgesError.message}`)
