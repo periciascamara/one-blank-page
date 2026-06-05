@@ -199,7 +199,7 @@ export default function CardEditorPage() {
     
     try {
       const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient() as any
+      const supabase = createClient()
       
       let cardId = data.card.id
       
@@ -211,8 +211,8 @@ export default function CardEditorPage() {
           .insert({
             user_id: data.card.user_id,
             nome: data.card.nome,
-            titulo: data.card.titulo,
-            foto_url: data.card.foto_url,
+            titulo: data.card.titulo || null,
+            foto_url: data.card.foto_url || null,
             layout: data.card.layout,
             contatos: data.card.contatos,
             redes_sociais: data.card.redes_sociais,
@@ -225,7 +225,9 @@ export default function CardEditorPage() {
           .select()
           .single()
           
-        if (insertError) throw insertError
+        if (insertError) throw new Error(`Erro ao inserir cartão: ${insertError.message}`)
+        if (!newCard) throw new Error('Cartão não retornou após inserção.')
+        
         cardId = newCard.id
         setData((prev) => prev ? { ...prev, card: { ...prev.card, id: cardId } } : null)
       } else {
@@ -234,8 +236,8 @@ export default function CardEditorPage() {
           .from('cards')
           .update({
             nome: data.card.nome,
-            titulo: data.card.titulo,
-            foto_url: data.card.foto_url,
+            titulo: data.card.titulo || null,
+            foto_url: data.card.foto_url || null,
             layout: data.card.layout,
             contatos: data.card.contatos,
             redes_sociais: data.card.redes_sociais,
@@ -246,15 +248,19 @@ export default function CardEditorPage() {
             status: data.card.status,
           })
           .eq('id', cardId)
+          .select()
+          .single()
 
-        if (cardError) throw cardError
+        if (cardError) throw new Error(`Erro ao atualizar cartão: ${cardError.message}`)
       }
 
       // 2. Synchronize active Badges
-      await supabase
+      const { error: deleteBadgesError } = await supabase
         .from('badges')
         .delete()
         .eq('user_id', data.card.user_id)
+        
+      if (deleteBadgesError) throw new Error(`Erro ao limpar badges antigas: ${deleteBadgesError.message}`)
 
       if (data.badges.length > 0) {
         const { error: badgesError } = await supabase
@@ -263,18 +269,20 @@ export default function CardEditorPage() {
             data.badges.map((b) => ({
               user_id: data.card.user_id,
               label: b.label,
-              codigo: b.codigo,
+              codigo: b.codigo || null,
               ativo: b.ativo,
             }))
           )
-        if (badgesError) throw badgesError
+        if (badgesError) throw new Error(`Erro ao inserir badges: ${badgesError.message}`)
       }
 
       // 3. Synchronize active Linktree links
-      await supabase
+      const { error: deleteLinksError } = await supabase
         .from('linktree_links')
         .delete()
         .eq('user_id', data.card.user_id)
+        
+      if (deleteLinksError) throw new Error(`Erro ao limpar links antigos: ${deleteLinksError.message}`)
 
       if (data.linktree_links.length > 0) {
         const { error: linksError } = await supabase
@@ -288,17 +296,15 @@ export default function CardEditorPage() {
               ativo: l.ativo,
             }))
           )
-        if (linksError) throw linksError
+        if (linksError) throw new Error(`Erro ao inserir links: ${linksError.message}`)
       }
 
       setSavedSuccess(true)
       setTimeout(() => setSavedSuccess(false), 2000)
     } catch (err: any) {
       console.error('Error saving card details to Supabase:', err)
-      const errorMsg = err.message || JSON.stringify(err)
-      alert('Erro ao salvar no Supabase: ' + errorMsg + '\nAs alterações foram salvas localmente.')
-      setSavedSuccess(true)
-      setTimeout(() => setSavedSuccess(false), 2000)
+      const errorMsg = err?.message || JSON.stringify(err) || 'Erro desconhecido'
+      alert('Erro ao salvar no Supabase:\n' + errorMsg + '\n\nAs alterações foram salvas localmente.')
     } finally {
       setIsSaving(false)
     }
