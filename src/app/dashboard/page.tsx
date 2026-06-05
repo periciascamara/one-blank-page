@@ -126,66 +126,79 @@ export default function DashboardPage() {
   const [socialPeriod, setSocialPeriod] = useState<'7d' | '30d'>('30d')
   
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [mockUser, setMockUser] = useState<any>(null)
   const [mockCard, setMockCard] = useState<any>(null)
 
   useEffect(() => {
     async function fetchData() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) return
+      try {
+        const supabase = createClient()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session?.user) return
 
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
 
-      const { data: cardData } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single()
+        if (profileError) {
+          console.error("Profile error:", profileError)
+          setErrorMsg(`Erro ao buscar perfil: ${profileError.message}`)
+          setIsLoading(false)
+          return
+        }
 
-      const profile = profileData as any
-      const card = cardData as any
+        const { data: cardData } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
 
-      if (profile) {
-        setMockUser({
-          nome: profile.nome || 'Usuário',
-          username: profile.username || '',
-          plano: (profile.plano as PlanoEnum) || 'simples',
-          dataContratacao: new Date(profile.created_at).toLocaleDateString('pt-BR'),
-          fimAnuidade: new Date(new Date(profile.created_at).setFullYear(new Date(profile.created_at).getFullYear() + 1)).toLocaleDateString('pt-BR'),
-        })
+        const profile = profileData as any
+        const card = cardData as any
+
+        if (profile) {
+          setMockUser({
+            nome: profile.nome || 'Usuário',
+            username: profile.username || '',
+            plano: (profile.plano as PlanoEnum) || 'simples',
+            dataContratacao: new Date(profile.created_at).toLocaleDateString('pt-BR'),
+            fimAnuidade: new Date(new Date(profile.created_at).setFullYear(new Date(profile.created_at).getFullYear() + 1)).toLocaleDateString('pt-BR'),
+          })
+        }
+
+        if (card) {
+          setMockCard({
+            nome: card.titulo ? profile.nome : (profile.nome || 'Sem Nome'),
+            titulo: card.titulo || 'Adicione um título',
+            foto_url: card.foto_url,
+            status: (card.status as StatusEnum) || 'ativo',
+            layout: (card.layout as LayoutEnum) || 'moderno',
+            especialidades: card.especialidades || [],
+            contatos: card.contatos || {},
+            customizacao: card.customizacao || { cor_primaria: '#6366f1' },
+          })
+          setCardStatus((card.status as StatusEnum) || 'ativo')
+        } else {
+          setMockCard({
+            nome: profile?.nome || 'Usuário',
+            titulo: 'Configure seu cartão digital',
+            foto_url: null,
+            status: 'ativo' as StatusEnum,
+            layout: 'moderno' as LayoutEnum,
+            especialidades: ['Adicione suas especialidades'],
+            contatos: {},
+            customizacao: { cor_primaria: '#6366f1' },
+          })
+        }
+      } catch (err: any) {
+        setErrorMsg(`Erro inesperado: ${err.message}`)
+      } finally {
+        setIsLoading(false)
       }
-
-      if (card) {
-        setMockCard({
-          nome: card.titulo ? profile.nome : (profile.nome || 'Sem Nome'),
-          titulo: card.titulo || 'Adicione um título',
-          foto_url: card.foto_url,
-          status: (card.status as StatusEnum) || 'ativo',
-          layout: (card.layout as LayoutEnum) || 'moderno',
-          especialidades: card.especialidades || [],
-          contatos: card.contatos || {},
-          customizacao: card.customizacao || { cor_primaria: '#6366f1' },
-        })
-        setCardStatus((card.status as StatusEnum) || 'ativo')
-      } else {
-        setMockCard({
-          nome: profile?.nome || 'Usuário',
-          titulo: 'Configure seu cartão digital',
-          foto_url: null,
-          status: 'ativo' as StatusEnum,
-          layout: 'moderno' as LayoutEnum,
-          especialidades: ['Adicione suas especialidades'],
-          contatos: {},
-          customizacao: { cor_primaria: '#6366f1' },
-        })
-      }
-      setIsLoading(false)
     }
     fetchData()
   }, [])
@@ -217,6 +230,23 @@ export default function DashboardPage() {
     return (
       <div className="flex h-full min-h-[400px] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    )
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="flex h-full min-h-[400px] w-full flex-col items-center justify-center p-4">
+        <div className="max-w-md rounded-xl bg-error/10 p-6 border border-error/20 text-center">
+          <h2 className="text-xl font-bold text-error mb-2">Erro ao carregar dados</h2>
+          <p className="text-text-secondary text-sm mb-4">{errorMsg}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-surface-200 px-4 py-2 text-sm text-text-primary hover:bg-surface-300"
+          >
+            Tentar Novamente
+          </button>
+        </div>
       </div>
     )
   }

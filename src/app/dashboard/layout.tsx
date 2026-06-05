@@ -68,35 +68,50 @@ export default function DashboardLayout({
     foto_url: string | null
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadProfile() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        window.location.href = '/login'
-        return
+      try {
+        const supabase = createClient()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session?.user) {
+          window.location.href = '/login'
+          return
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profileError) {
+          console.error("Profile fetch error:", profileError)
+          setErrorMsg(`Erro ao buscar perfil: ${profileError.message}`)
+          setIsLoading(false)
+          return
+        }
+
+        const profile = profileData as any
+
+        if (profile) {
+          setCurrentUser({
+            nome: profile.nome || 'Usuário',
+            email: session.user.email || '',
+            username: profile.username || '',
+            plano: (profile.plano as PlanoEnum) || 'simples',
+            foto_url: profile.foto_url,
+          })
+        } else {
+          setErrorMsg("Perfil não encontrado no banco de dados.")
+        }
+      } catch (err: any) {
+        setErrorMsg(`Erro inesperado: ${err.message}`)
+      } finally {
+        setIsLoading(false)
       }
-
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-
-      const profile = profileData as any
-
-      if (profile) {
-        setCurrentUser({
-          nome: profile.nome || 'Usuário',
-          email: session.user.email || '',
-          username: profile.username || '',
-          plano: (profile.plano as PlanoEnum) || 'simples',
-          foto_url: profile.foto_url,
-        })
-      }
-      setIsLoading(false)
     }
     loadProfile()
   }, [])
@@ -105,6 +120,23 @@ export default function DashboardLayout({
     return (
       <div className="flex h-screen w-full items-center justify-center bg-surface-0">
         <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    )
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-surface-0 p-4">
+        <div className="max-w-md rounded-xl bg-error/10 p-6 border border-error/20 text-center">
+          <h2 className="text-xl font-bold text-error mb-2">Ops, algo deu errado!</h2>
+          <p className="text-text-secondary text-sm mb-4">{errorMsg}</p>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="rounded-lg bg-surface-200 px-4 py-2 text-sm text-text-primary hover:bg-surface-300"
+          >
+            Voltar para o Login
+          </button>
+        </div>
       </div>
     )
   }
