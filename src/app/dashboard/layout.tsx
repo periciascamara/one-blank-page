@@ -206,9 +206,11 @@ export default function DashboardLayout({
           {/* Bottom section */}
           <div className="border-t border-white/[0.06] px-3 py-4">
             <button
-              onClick={() => {
-                // Will integrate with Supabase auth later
-                console.log('Logout clicked')
+              onClick={async () => {
+                const { createClient } = await import('@/lib/supabase/client')
+                const supabase = createClient()
+                await supabase.auth.signOut()
+                window.location.href = '/'
               }}
               className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-text-tertiary transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
             >

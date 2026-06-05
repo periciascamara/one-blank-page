@@ -335,7 +335,7 @@ export default function RegisterPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={isLoading || !lgpdConsent}
+          disabled={isLoading}
           className={cn(
             'relative w-full overflow-hidden rounded-xl py-3 text-sm font-semibold text-white transition-all duration-300',
             'gradient-brand shadow-lg shadow-brand-500/25',
