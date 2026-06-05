@@ -265,7 +265,6 @@ export default function CardEditorPage() {
               label: b.label,
               codigo: b.codigo,
               ativo: b.ativo,
-              meta_percentual: b.meta_percentual,
             }))
           )
         if (badgesError) throw badgesError
@@ -294,9 +293,10 @@ export default function CardEditorPage() {
 
       setSavedSuccess(true)
       setTimeout(() => setSavedSuccess(false), 2000)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving card details to Supabase:', err)
-      alert('Erro ao salvar no Supabase. As alterações foram salvas localmente.')
+      const errorMsg = err.message || JSON.stringify(err)
+      alert('Erro ao salvar no Supabase: ' + errorMsg + '\nAs alterações foram salvas localmente.')
       setSavedSuccess(true)
       setTimeout(() => setSavedSuccess(false), 2000)
     } finally {
