@@ -21,6 +21,30 @@ export default function LoginPage() {
     setError(null)
     setIsLoading(true)
 
+    const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('SEU-PROJETO')
+
+    if (isPlaceholder) {
+      // Developer / mock bypass check for offline dev testing
+      const validEmails = [
+        'admin@exemplo.com',
+        'dramaria@exemplo.com',
+        'drrafael@exemplo.com',
+        'usuario3@exemplo.com',
+        'usuario4@exemplo.com',
+        'usuario5@exemplo.com',
+      ]
+
+      if (validEmails.includes(email.toLowerCase()) && password === 'senha123') {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      } else {
+        setIsLoading(false)
+        setError('E-mail ou senha incorretos. Verifique seus dados e tente novamente.')
+        return
+      }
+    }
+
     const supabase = createClient()
 
     const { error: signInError } = await supabase.auth.signInWithPassword({

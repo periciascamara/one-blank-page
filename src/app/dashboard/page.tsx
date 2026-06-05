@@ -21,6 +21,10 @@ import {
   Globe,
   Phone,
   Mail,
+  Calendar,
+  History,
+  Clock,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { StatusEnum, PlanoEnum, LayoutEnum } from '@/lib/types/database'
@@ -30,6 +34,8 @@ const mockUser = {
   nome: 'Dr. Rafael Moraes',
   username: 'dr-rafael-moraes',
   plano: 'medio' as PlanoEnum,
+  dataContratacao: '15/01/2025',
+  fimAnuidade: '15/01/2027',
 }
 
 const mockCard = {
@@ -57,6 +63,69 @@ const mockStats = {
   tendencia_qrcodes: -2.1,
 }
 
+// Click Evolution Chart Data Points
+const evolutionData = {
+  '7d': [
+    { label: '28/05', val: 12 },
+    { label: '29/05', val: 19 },
+    { label: '30/05', val: 15 },
+    { label: '31/05', val: 28 },
+    { label: '01/06', val: 22 },
+    { label: '02/06', val: 35 },
+    { label: '03/06', val: 42 },
+  ],
+  '30d': [
+    { label: 'Semana 1', val: 65 },
+    { label: 'Semana 2', val: 82 },
+    { label: 'Semana 3', val: 110 },
+    { label: 'Semana 4', val: 135 },
+  ],
+  '90d': [
+    { label: 'Março', val: 280 },
+    { label: 'Abril', val: 390 },
+    { label: 'Maio', val: 490 },
+    { label: 'Junho', val: 580 },
+  ],
+}
+
+// Top Links Click Frequencies
+const linksClickData = {
+  '7d': [
+    { label: 'Consulta (Doctoralia)', val: 24, cat: 'Consultas' },
+    { label: 'Artigos Publicados (PubMed)', val: 15, cat: 'Artigos' },
+    { label: 'Currículo Lattes', val: 8, cat: 'Outros' },
+  ],
+  '30d': [
+    { label: 'Consulta (Doctoralia)', val: 184, cat: 'Consultas' },
+    { label: 'Artigos Publicados (PubMed)', val: 98, cat: 'Artigos' },
+    { label: 'Currículo Lattes', val: 46, cat: 'Outros' },
+  ],
+}
+
+// Top Social Networks Click Frequencies
+const socialsClickData = {
+  '7d': [
+    { label: 'Instagram', val: 32 },
+    { label: 'LinkedIn', val: 24 },
+    { label: 'Website', val: 12 },
+    { label: 'YouTube', val: 5 },
+  ],
+  '30d': [
+    { label: 'Instagram', val: 142 },
+    { label: 'LinkedIn', val: 118 },
+    { label: 'Website', val: 48 },
+    { label: 'YouTube', val: 20 },
+  ],
+}
+
+// Card modification logs
+const mockModificationLogs = [
+  { id: '1', acao: 'Alteração de Layout', data: '04/06/2026', detalhes: 'Layout atualizado de "minimalista" para "moderno".' },
+  { id: '2', acao: 'Competência Ativada', data: '02/06/2026', detalhes: 'Ativou o badge "IA Frontier" no cartão.' },
+  { id: '3', acao: 'Formação Adicionada', data: '30/05/2026', detalhes: 'Incluiu "Residência em Cardiologia" pela InCor USP.' },
+  { id: '4', acao: 'Criação do Perfil', data: '15/05/2026', detalhes: 'Configurações básicas e contatos iniciais definidos.' },
+]
+
 const container = {
   hidden: { opacity: 0 },
   show: {
@@ -73,6 +142,9 @@ const item = {
 export default function DashboardPage() {
   const [cardStatus, setCardStatus] = useState<StatusEnum>(mockCard.status)
   const [copied, setCopied] = useState(false)
+  const [clickPeriod, setClickPeriod] = useState<'7d' | '30d' | '90d'>('7d')
+  const [linkPeriod, setLinkPeriod] = useState<'7d' | '30d'>('30d')
+  const [socialPeriod, setSocialPeriod] = useState<'7d' | '30d'>('30d')
 
   const profileUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${mockUser.username}`
 
@@ -88,6 +160,37 @@ export default function DashboardPage() {
 
   const toggleStatus = () => {
     setCardStatus((prev) => (prev === 'ativo' ? 'dormindo' : 'ativo'))
+  }
+
+  const handleExportCSV = () => {
+    const today = new Date().toISOString().split('T')[0]
+    const filename = `relatorio_estatisticas_${today}.csv`
+
+    // Generate CSV content
+    const csvRows = [
+      ['Indicador', 'Valor', 'Tendencia/Status'],
+      ['Data de Exportacao', today, ''],
+      ['Profissional', mockUser.nome, ''],
+      ['Plano Contratado', mockUser.plano.toUpperCase(), ''],
+      ['Status do Cartao', cardStatus.toUpperCase(), ''],
+      ['Visualizacoes Totais', mockStats.visualizacoes.toString(), `${mockStats.tendencia_visualizacoes}%`],
+      ['Links Clicados', mockStats.cliques.toString(), `${mockStats.tendencia_cliques}%`],
+      ['QR Codes Baixados', mockStats.qrcodes.toString(), `${mockStats.tendencia_qrcodes}%`],
+    ]
+
+    // Convert rows to CSV string (with UTF-8 BOM for Excel support)
+    const csvContent = '\uFEFF' + csvRows.map(row => row.map(val => `"${val}"`).join(',')).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    
+    // Trigger download
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const stats = [
@@ -164,30 +267,40 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Card status toggle */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-text-secondary">Status:</span>
+          {/* Action Header controls */}
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={toggleStatus}
-              className={cn(
-                'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 border',
-                cardStatus === 'ativo'
-                  ? 'bg-success/10 border-success/25 text-success'
-                  : 'bg-warning/10 border-warning/25 text-warning'
-              )}
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 border bg-white/5 border-white/10 text-brand-300 hover:bg-white/10 hover:text-brand-200"
             >
-              {cardStatus === 'ativo' ? (
-                <>
-                  <Sun className="h-4 w-4" />
-                  <span>Ativo</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="h-4 w-4" />
-                  <span>Dormindo</span>
-                </>
-              )}
+              <Download className="h-4 w-4" />
+              <span>Exportar Estatísticas</span>
             </button>
+
+            <div className="flex items-center gap-2.5">
+              <span className="text-sm text-text-secondary">Status:</span>
+              <button
+                onClick={toggleStatus}
+                className={cn(
+                  'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 border',
+                  cardStatus === 'ativo'
+                    ? 'bg-success/10 border-success/25 text-success'
+                    : 'bg-warning/10 border-warning/25 text-warning'
+                )}
+              >
+                {cardStatus === 'ativo' ? (
+                  <>
+                    <Sun className="h-4 w-4" />
+                    <span>Ativo</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4" />
+                    <span>Dormindo</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </motion.div>
 
@@ -430,6 +543,196 @@ export default function DashboardPage() {
             )}
           </motion.div>
         </div>
+
+        {/* Row 4: Click Evolution & Top Frequencies */}
+        <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+          {/* Click Evolution Chart */}
+          <div className="lg:col-span-2 glass-card rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-brand-400" />
+                Evolução de Cliques Totais
+              </h2>
+              {/* Period Selector Filter */}
+              <div className="flex bg-surface-200 border border-white/5 rounded-lg p-0.5 self-start sm:self-auto">
+                {(['7d', '30d', '90d'] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setClickPeriod(period)}
+                    className={cn(
+                      'px-3 py-1 text-xs font-semibold rounded-md transition-all duration-200',
+                      clickPeriod === period
+                        ? 'bg-brand-500 text-white shadow'
+                        : 'text-text-secondary hover:text-text-primary'
+                    )}
+                  >
+                    {period === '7d' ? '7 Dias' : period === '30d' ? '30 Dias' : '90 Dias'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Click Evolution SVG Chart Plot */}
+            <div className="h-[200px] flex items-end justify-between gap-1 w-full pt-4 font-mono text-[10px] text-text-tertiary">
+              {evolutionData[clickPeriod].map((pt, idx) => {
+                const maxVal = Math.max(...evolutionData[clickPeriod].map(p => p.val), 10)
+                const pct = (pt.val / maxVal) * 100
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-semibold text-brand-300 text-xs mb-1">
+                      {pt.val}
+                    </span>
+                    <div className="w-full max-w-[32px] bg-white/5 border border-white/10 rounded-t-lg h-full flex items-end overflow-hidden">
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${pct}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        className="w-full bg-gradient-to-t from-brand-600 to-accent-500 rounded-t-md group-hover:brightness-110 transition-all duration-300"
+                      />
+                    </div>
+                    <span className="truncate max-w-[64px] text-center">{pt.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Top Links & Socials Frequency Charts */}
+          <div className="glass-card rounded-2xl p-6 space-y-5">
+            <div>
+              <div className="flex items-center justify-between mb-3.5">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-secondary">
+                  Cliques por Mídia
+                </h2>
+                <div className="flex bg-surface-200 border border-white/5 rounded-md p-0.5">
+                  {(['7d', '30d'] as const).map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => {
+                        setLinkPeriod(period)
+                        setSocialPeriod(period)
+                      }}
+                      className={cn(
+                        'px-2 py-0.5 text-[10px] font-bold rounded',
+                        linkPeriod === period
+                          ? 'bg-brand-500 text-white shadow'
+                          : 'text-text-secondary hover:text-text-primary'
+                      )}
+                    >
+                      {period === '7d' ? '7D' : '30D'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Frequencies links progress bars */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-text-tertiary">Links do Perfil</p>
+                {linksClickData[linkPeriod].map((lnk) => {
+                  const maxLnk = Math.max(...linksClickData[linkPeriod].map(l => l.val), 1)
+                  const pct = (lnk.val / maxLnk) * 100
+                  return (
+                    <div key={lnk.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-primary font-medium truncate max-w-[170px]">{lnk.label}</span>
+                        <span className="font-mono text-brand-300 font-bold">{lnk.val}</span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                        <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="space-y-3 pt-4 mt-4 border-t border-white/[0.06]">
+                <p className="text-xs font-semibold text-text-tertiary">Redes Sociais</p>
+                {socialsClickData[socialPeriod].map((soc) => {
+                  const maxSoc = Math.max(...socialsClickData[socialPeriod].map(s => s.val), 1)
+                  const pct = (soc.val / maxSoc) * 100
+                  return (
+                    <div key={soc.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-primary font-medium">{soc.label}</span>
+                        <span className="font-mono text-accent-300 font-bold">{soc.val}</span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                        <div className="bg-accent-500 h-full rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Row 5: Modification Log & Subscription Info */}
+        <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+          {/* Card Modification Log */}
+          <div className="lg:col-span-2 glass-card rounded-2xl p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+              <History className="h-5 w-5 text-brand-400" />
+              Log de Alterações do Cartão
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-white/[0.06] text-text-tertiary">
+                    <th className="pb-2.5 font-semibold">Ação</th>
+                    <th className="pb-2.5 font-semibold">Data</th>
+                    <th className="pb-2.5 font-semibold">Alterações Realizadas</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {mockModificationLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-white/[0.01] transition-colors">
+                      <td className="py-3 font-semibold text-text-primary flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5 text-brand-400/80 hover:text-brand-300 transition-colors" />
+                        {log.acao}
+                      </td>
+                      <td className="py-3 text-text-secondary font-mono">{log.data}</td>
+                      <td className="py-3 text-text-tertiary">{log.detalhes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Subscription Dates & Contract Details */}
+          <div className="glass-card rounded-2xl p-6 space-y-4 relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full opacity-50 blur-2xl bg-accent-500/10" />
+            
+            <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2 relative z-10">
+              <Calendar className="h-5 w-5 text-brand-400" />
+              Plano & Assinatura
+            </h2>
+
+            <div className="space-y-3 pt-2 relative z-10">
+              <div className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.04] flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Plano Ativo</span>
+                <span className="text-sm font-bold text-brand-300">Plano Médio (Anual)</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.04] flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Data Contratação</span>
+                  <span className="text-xs font-semibold text-text-secondary font-mono">{mockUser.dataContratacao}</span>
+                </div>
+                <div className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.04] flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Fim da Anuidade</span>
+                  <span className="text-xs font-semibold text-accent-300 font-mono">{mockUser.fimAnuidade}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 text-[10px] text-text-tertiary leading-relaxed flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                Assinatura ativa e renovação automática habilitada.
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   )

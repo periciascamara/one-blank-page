@@ -12,6 +12,7 @@ import type {
 import { CardContainer } from '@/components/card/CardContainer'
 import { SleepingCard } from '@/components/card/SleepingCard'
 import { PublicShareBar } from '@/components/card/PublicShareBar'
+import { createClient } from '@/lib/supabase/server'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -194,7 +195,78 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicCardPage({ params }: PageProps) {
   const { username } = await params
-  const data = getMockCardData(username)
+  
+  const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('SEU-PROJETO')
+  let data = getMockCardData(username)
+
+  if (!isPlaceholder) {
+    try {
+      const supabase = await createClient()
+      const { data: profile } = (await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single()) as { data: any }
+
+      if (profile) {
+        const { data: card } = (await supabase
+          .from('cards')
+          .select('*')
+          .eq('user_id', profile.id)
+          .single()) as { data: any }
+
+        if (card && card.status !== 'apagado') {
+          const { data: badges } = (await supabase
+            .from('badges')
+            .select('*')
+            .eq('user_id', profile.id)
+            .eq('ativo', true)) as { data: any[] | null }
+
+          const { data: linktree_links } = (await supabase
+            .from('linktree_links')
+            .select('*')
+            .eq('user_id', profile.id)
+            .eq('ativo', true)
+            .order('ordem', { ascending: true })) as { data: any[] | null }
+
+          const { data: portfolio_links } = (await supabase
+            .from('portfolio_links')
+            .select('*')
+            .eq('user_id', profile.id)) as { data: any[] | null }
+
+          // Ensure strict JSON conversions
+          const rawFormacao = Array.isArray(card.formacao) ? card.formacao : JSON.parse((card.formacao as any) || '[]')
+          const rawEspecialidades = Array.isArray(card.especialidades) ? card.especialidades : JSON.parse((card.especialidades as any) || '[]')
+          const rawContatos = (typeof card.contatos === 'object' && card.contatos) ? card.contatos : JSON.parse((card.contatos as any) || '{}')
+          const rawRedesSociais = (typeof card.redes_sociais === 'object' && card.redes_sociais) ? card.redes_sociais : JSON.parse((card.redes_sociais as any) || '{}')
+          const rawCustomizacao = (typeof card.customizacao === 'object' && card.customizacao) ? card.customizacao : JSON.parse((card.customizacao as any) || '{}')
+
+          data = {
+            status: card.status,
+            profile: {
+              username: profile.username,
+              plano: profile.plano,
+            },
+            card: {
+              ...card,
+              formacao: rawFormacao,
+              especialidades: rawEspecialidades,
+              contatos: rawContatos,
+              redes_sociais: rawRedesSociais,
+              customizacao: rawCustomizacao,
+            },
+            badges: badges || [],
+            linktree_links: linktree_links || [],
+            portfolio_links: portfolio_links || [],
+          }
+        } else if (card?.status === 'apagado') {
+          data = { ...data, status: 'apagado' }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching Supabase data, falling back to mock:', err)
+    }
+  }
 
   if (data.status === 'apagado') {
     notFound()

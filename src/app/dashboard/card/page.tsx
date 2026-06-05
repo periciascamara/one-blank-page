@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
@@ -62,8 +62,8 @@ const mockInitialData: PublicCardData = {
     deleted_at: null,
   },
   badges: [
-    { id: '1', user_id: 'user-1', label: 'CRM Ativo SP 123456', codigo: 'crm', ativo: true, created_at: '' },
-    { id: '2', user_id: 'user-1', label: 'RQE Registro de Especialista', codigo: 'rqe', ativo: true, created_at: '' },
+    { id: '1', user_id: 'user-1', label: 'CRM Ativo SP 123456', codigo: 'crm', ativo: true, meta_percentual: 90, created_at: '' },
+    { id: '2', user_id: 'user-1', label: 'RQE Registro de Especialista', codigo: 'rqe', ativo: true, meta_percentual: 55, created_at: '' },
   ],
   linktree_links: [
     { id: 'l1', user_id: 'user-1', label: 'Agendar Consulta (Doctoralia)', url: 'https://doctoralia.com.br', ativo: true, ordem: 0, created_at: '' },
@@ -80,6 +80,83 @@ export default function CardEditorPage() {
   const [showPreviewBack, setShowPreviewBack] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+
+  // Sync edited card data to localStorage for real-time update in open public card preview tabs
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(`oneblankpage_preview_${data.profile.username}`, JSON.stringify(data))
+  }, [data])
+
+  // Load actual Supabase card data on mount if connection keys are set
+  useEffect(() => {
+    const loadUserData = async () => {
+      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('SEU-PROJETO')
+      if (isPlaceholder) return
+
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: profile } = (await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()) as { data: any }
+
+        if (profile) {
+          const { data: card } = (await supabase
+            .from('cards')
+            .select('*')
+            .eq('user_id', profile.id)
+            .single()) as { data: any }
+
+          if (card) {
+            const { data: badges } = (await supabase
+              .from('badges')
+              .select('*')
+              .eq('user_id', profile.id)) as { data: any[] | null }
+
+            const { data: linktree_links } = (await supabase
+              .from('linktree_links')
+              .select('*')
+              .eq('user_id', profile.id)
+              .order('ordem', { ascending: true })) as { data: any[] | null }
+
+            const rawFormacao = Array.isArray(card.formacao) ? card.formacao : JSON.parse((card.formacao as any) || '[]')
+            const rawEspecialidades = Array.isArray(card.especialidades) ? card.especialidades : JSON.parse((card.especialidades as any) || '[]')
+            const rawContatos = (typeof card.contatos === 'object' && card.contatos) ? card.contatos : JSON.parse((card.contatos as any) || '{}')
+            const rawRedesSociais = (typeof card.redes_sociais === 'object' && card.redes_sociais) ? card.redes_sociais : JSON.parse((card.redes_sociais as any) || '{}')
+            const rawCustomizacao = (typeof card.customizacao === 'object' && card.customizacao) ? card.customizacao : JSON.parse((card.customizacao as any) || '{}')
+
+            setData({
+              profile: {
+                username: profile.username,
+                plano: profile.plano,
+              },
+              card: {
+                ...card,
+                formacao: rawFormacao,
+                especialidades: rawEspecialidades,
+                contatos: rawContatos,
+                redes_sociais: rawRedesSociais,
+                customizacao: rawCustomizacao,
+              },
+              badges: badges || [],
+              linktree_links: linktree_links || [],
+              portfolio_links: [],
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error loading card data from Supabase:', err)
+      }
+    }
+
+    loadUserData()
+  }, [])
 
   // Specialty Tag Input State
   const [newSpecialty, setNewSpecialty] = useState('')
@@ -110,6 +187,7 @@ export default function CardEditorPage() {
           label,
           codigo,
           ativo: true,
+          meta_percentual: 75,
           created_at: new Date().toISOString(),
         }
         return {
@@ -120,6 +198,13 @@ export default function CardEditorPage() {
     })
   }
 
+  const handleBadgeProgressChange = (id: string, value: number) => {
+    setData((prev) => ({
+      ...prev,
+      badges: prev.badges.map((b) => (b.id === id ? { ...b, meta_percentual: value } : b)),
+    }))
+  }
+
   const isFeatureLocked = (featurePlan: PlanoEnum) => {
     if (userPlan === 'completo') return false
     if (userPlan === 'medio' && featurePlan !== 'completo') return false
@@ -127,13 +212,95 @@ export default function CardEditorPage() {
     return true
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true)
-    setTimeout(() => {
-      setIsSaving(false)
-      setSavedSuccess(true)
-      setTimeout(() => setSavedSuccess(false), 2000)
-    }, 1000)
+    
+    const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('SEU-PROJETO')
+    
+    if (!isPlaceholder) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient() as any
+        
+        // 1. Update Card in DB
+        const { error: cardError } = await supabase
+          .from('cards')
+          .update({
+            nome: data.card.nome,
+            titulo: data.card.titulo,
+            foto_url: data.card.foto_url,
+            layout: data.card.layout,
+            contatos: data.card.contatos,
+            redes_sociais: data.card.redes_sociais,
+            especialidades: data.card.especialidades,
+            formacao: data.card.formacao,
+            customizacao: data.card.customizacao,
+            nfc_ativo: data.card.nfc_ativo,
+            status: data.card.status,
+          })
+          .eq('id', data.card.id)
+
+        if (cardError) throw cardError
+
+        // 2. Synchronize active Badges
+        await supabase
+          .from('badges')
+          .delete()
+          .eq('user_id', data.card.user_id)
+
+        if (data.badges.length > 0) {
+          const { error: badgesError } = await supabase
+            .from('badges')
+            .insert(
+              data.badges.map((b) => ({
+                user_id: data.card.user_id,
+                label: b.label,
+                codigo: b.codigo,
+                ativo: b.ativo,
+                meta_percentual: b.meta_percentual,
+              }))
+            )
+          if (badgesError) throw badgesError
+        }
+
+        // 3. Synchronize active Linktree links
+        await supabase
+          .from('linktree_links')
+          .delete()
+          .eq('user_id', data.card.user_id)
+
+        if (data.linktree_links.length > 0) {
+          const { error: linksError } = await supabase
+            .from('linktree_links')
+            .insert(
+              data.linktree_links.map((l) => ({
+                user_id: data.card.user_id,
+                label: l.label,
+                url: l.url,
+                ordem: l.ordem,
+                ativo: l.ativo,
+              }))
+            )
+          if (linksError) throw linksError
+        }
+
+        setSavedSuccess(true)
+        setTimeout(() => setSavedSuccess(false), 2000)
+      } catch (err) {
+        console.error('Error saving card details to Supabase:', err)
+        alert('Erro ao salvar no Supabase. As alterações foram salvas localmente.')
+        setSavedSuccess(true)
+        setTimeout(() => setSavedSuccess(false), 2000)
+      } finally {
+        setIsSaving(false)
+      }
+    } else {
+      setTimeout(() => {
+        setIsSaving(false)
+        setSavedSuccess(true)
+        setTimeout(() => setSavedSuccess(false), 2000)
+      }, 1000)
+    }
   }
 
   const handleBasicChange = (field: keyof Card, value: any) => {
@@ -722,6 +889,49 @@ export default function CardEditorPage() {
                   })}
                 </div>
               </div>
+
+              {/* Progresso das Metas dos Badges Ativos */}
+              {data.badges.filter(b => b.ativo).length > 0 && (
+                <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+                  <p className="text-xs font-semibold text-text-secondary flex items-center justify-between">
+                    <span>Definir Nível de Meta por Competência (0 a 100%)</span>
+                    <span className="text-[10px] text-text-tertiary">Aparece com cores dinâmicas</span>
+                  </p>
+                  <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
+                    {data.badges.filter(b => b.ativo).map((badge) => {
+                      const percentage = badge.meta_percentual !== undefined ? badge.meta_percentual : 75
+                      const badgeColor = percentage >= 80 ? 'text-success' : percentage >= 40 ? 'text-warning' : 'text-error'
+
+                      return (
+                        <div key={badge.id} className="flex flex-col gap-1.5 p-2.5 rounded-xl border border-white/5 bg-surface-200/30">
+                          <div className="flex items-center justify-between text-xs font-medium">
+                            <span className="text-text-primary truncate max-w-[200px]">{badge.label}</span>
+                            <span className={cn('font-mono font-bold', badgeColor)}>{percentage}%</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={percentage}
+                              onChange={(e) => handleBadgeProgressChange(badge.id, parseInt(e.target.value))}
+                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-brand-400"
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={percentage}
+                              onChange={(e) => handleBadgeProgressChange(badge.id, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                              className="w-12 bg-surface-200 border border-white/8 rounded px-1.5 py-0.5 text-[10px] text-center text-text-primary outline-none"
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -735,10 +945,13 @@ export default function CardEditorPage() {
 
               {/* Layout Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-medium text-text-secondary">Layout do Cartão</label>
+                <label className="text-xs font-medium text-text-secondary flex items-center justify-between">
+                  <span>Layout do Cartão</span>
+                  <span className="text-[10px] text-text-tertiary">Disponíveis: 6 modelos</span>
+                </label>
                 <div className="grid grid-cols-3 gap-2.5">
-                  {['minimalista', 'moderno', 'academico'].map((layoutOption) => {
-                    const isLocked = layoutOption === 'academico' && isFeatureLocked('medio')
+                  {['minimalista', 'moderno', 'academico', 'futurista', 'neon', 'corporativo'].map((layoutOption) => {
+                    const isLocked = (layoutOption === 'academico' || layoutOption === 'futurista' || layoutOption === 'neon') && isFeatureLocked('medio')
                     const isSelected = data.card.layout === layoutOption
 
                     return (
@@ -746,7 +959,7 @@ export default function CardEditorPage() {
                         key={layoutOption}
                         onClick={() => !isLocked && handleBasicChange('layout', layoutOption)}
                         className={cn(
-                          'relative flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-300',
+                          'relative flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-300 min-h-[50px]',
                           isSelected
                             ? 'bg-brand-500/10 border-brand-500 text-brand-400 shadow-md shadow-brand-500/10'
                             : 'bg-surface-200/50 border-white/5 text-text-secondary hover:bg-surface-200 hover:text-text-primary',
@@ -756,10 +969,10 @@ export default function CardEditorPage() {
                       >
                         {isLocked && (
                           <div className="absolute top-1 right-1">
-                            <Lock className="h-3 w-3 text-text-tertiary" />
+                            <Lock className="h-2.5 w-2.5 text-text-tertiary" />
                           </div>
                         )}
-                        <span className="text-xs font-semibold capitalize">{layoutOption}</span>
+                        <span className="text-[11px] font-semibold capitalize">{layoutOption}</span>
                       </button>
                     )
                   })}
@@ -796,38 +1009,110 @@ export default function CardEditorPage() {
                 </div>
               </div>
 
-              {/* Color Customizations */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-text-secondary">Cor Primária</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={data.card.customizacao.cor_primaria || '#6366f1'}
-                      onChange={(e) => handleCustomizationChange('cor_primaria', e.target.value)}
-                      className="h-8 w-8 rounded cursor-pointer border-none bg-transparent"
-                    />
-                    <span className="text-xs text-text-primary font-mono uppercase">
-                      {data.card.customizacao.cor_primaria}
-                    </span>
-                  </div>
-                </div>
+              {/* Color Profiles & Customizer (Visible when 'colorido' or custom colors are used) */}
+              {data.card.customizacao.tema_modo === 'colorido' && (
+                <div className="space-y-3.5 pt-2 border-t border-white/[0.06]">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-text-secondary">Perfis de Cores</label>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[
+                        { id: 'safira', name: 'Safira', primary: '#3b82f6', bg: '#0f172a' },
+                        { id: 'esmeralda', name: 'Esmeralda', primary: '#10b981', bg: '#064e3b' },
+                        { id: 'rubi', name: 'Rubi', primary: '#f43f5e', bg: '#4c0519' },
+                        { id: 'ametista', name: 'Ametista', primary: '#a855f7', bg: '#1e1b4b' },
+                        { id: 'personalizado', name: 'Personalizado', primary: '', bg: '' }
+                      ].map((profile) => {
+                        const isPresetMatch = profile.id !== 'personalizado' &&
+                          data.card.customizacao.cor_primaria === profile.primary &&
+                          data.card.customizacao.cor_fundo === profile.bg
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-text-secondary">Cor de Fundo</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={data.card.customizacao.cor_fundo || '#09090b'}
-                      onChange={(e) => handleCustomizationChange('cor_fundo', e.target.value)}
-                      className="h-8 w-8 rounded cursor-pointer border-none bg-transparent"
-                    />
-                    <span className="text-xs text-text-primary font-mono uppercase">
-                      {data.card.customizacao.cor_fundo}
-                    </span>
+                        const isCustomSelected = profile.id === 'personalizado' &&
+                          !['#3b82f6', '#10b981', '#f43f5e', '#a855f7'].includes(data.card.customizacao.cor_primaria || '')
+
+                        const isSelected = isPresetMatch || isCustomSelected
+
+                        return (
+                          <button
+                            key={profile.id}
+                            type="button"
+                            onClick={() => {
+                              if (profile.id !== 'personalizado') {
+                                handleCustomizationChange('cor_primaria', profile.primary)
+                                handleCustomizationChange('cor_fundo', profile.bg)
+                              }
+                            }}
+                            className={cn(
+                              'flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all duration-200 text-[10px]',
+                              isSelected
+                                ? 'bg-brand-500/15 border-brand-500 text-brand-300'
+                                : 'bg-surface-200/50 border-white/5 text-text-secondary hover:bg-surface-200 hover:text-text-primary'
+                            )}
+                          >
+                            <span className="font-semibold">{profile.name}</span>
+                            {profile.id !== 'personalizado' && (
+                              <div className="flex gap-1 mt-1">
+                                <span className="h-2 w-2 rounded-full border border-white/10" style={{ backgroundColor: profile.primary }} />
+                                <span className="h-2 w-2 rounded-full border border-white/10" style={{ backgroundColor: profile.bg }} />
+                              </div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Manual Inputs with Hex Typing support */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-text-secondary">Cor Primária (Hex/Número)</label>
+                      <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-surface-200/50 p-1.5">
+                        <input
+                          type="color"
+                          value={data.card.customizacao.cor_primaria || '#6366f1'}
+                          onChange={(e) => handleCustomizationChange('cor_primaria', e.target.value)}
+                          className="h-7 w-7 rounded cursor-pointer border-none bg-transparent shrink-0"
+                        />
+                        <input
+                          type="text"
+                          maxLength={7}
+                          value={data.card.customizacao.cor_primaria || ''}
+                          onChange={(e) => {
+                            let val = e.target.value
+                            if (val && !val.startsWith('#')) val = '#' + val
+                            handleCustomizationChange('cor_primaria', val)
+                          }}
+                          placeholder="#6366f1"
+                          className="bg-transparent text-xs text-text-primary outline-none font-mono w-full uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-text-secondary">Cor de Fundo (Hex/Número)</label>
+                      <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-surface-200/50 p-1.5">
+                        <input
+                          type="color"
+                          value={data.card.customizacao.cor_fundo || '#09090b'}
+                          onChange={(e) => handleCustomizationChange('cor_fundo', e.target.value)}
+                          className="h-7 w-7 rounded cursor-pointer border-none bg-transparent shrink-0"
+                        />
+                        <input
+                          type="text"
+                          maxLength={7}
+                          value={data.card.customizacao.cor_fundo || ''}
+                          onChange={(e) => {
+                            let val = e.target.value
+                            if (val && !val.startsWith('#')) val = '#' + val
+                            handleCustomizationChange('cor_fundo', val)
+                          }}
+                          placeholder="#09090b"
+                          className="bg-transparent text-xs text-text-primary outline-none font-mono w-full uppercase"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -876,12 +1161,23 @@ export default function CardEditorPage() {
               Visualização Interativa
             </span>
 
-            <button
-              onClick={() => setShowPreviewBack(!showPreviewBack)}
-              className="glass-button text-xs font-semibold rounded-lg px-3 py-1.5 text-brand-300"
-            >
-              Girar Cartão
-            </button>
+            <div className="flex items-center gap-2">
+              <a
+                href={`/p/${data.profile.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-button text-xs font-semibold rounded-lg px-3 py-1.5 text-accent-400 flex items-center gap-1.5 hover:text-accent-300"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Visualizar Público
+              </a>
+              <button
+                onClick={() => setShowPreviewBack(!showPreviewBack)}
+                className="glass-button text-xs font-semibold rounded-lg px-3 py-1.5 text-brand-300"
+              >
+                Girar Cartão
+              </button>
+            </div>
           </div>
 
           {/* Interactive Card container */}

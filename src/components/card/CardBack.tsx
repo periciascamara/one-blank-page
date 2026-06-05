@@ -175,9 +175,12 @@ export function CardBack({ data }: CardBackProps) {
 
   // Layout-specific classes
   const containerBaseStyles: Record<string, string> = {
-    minimalista: 'border shadow-2xl',
-    moderno: 'border shadow-2xl',
-    academico: 'border shadow-2xl',
+    minimalista: 'border shadow-2xl relative',
+    moderno: 'border shadow-2xl relative',
+    academico: 'border shadow-2xl relative',
+    futurista: 'border shadow-2xl relative rounded-3xl overflow-hidden',
+    neon: 'border-2 shadow-2xl shadow-brand-500/20 relative rounded-2xl',
+    corporativo: 'border-t-[6px] border-x border-b shadow-md relative rounded-none',
   }
 
   // Theme-specific container styles
@@ -188,13 +191,25 @@ export function CardBack({ data }: CardBackProps) {
         ? 'glass-card gradient-card text-text-primary'
         : layout === 'academico'
           ? 'bg-gradient-to-br from-surface-100 via-surface-200 to-brand-950/30 border-brand-500/10 text-text-primary'
-          : 'bg-surface-100 border-white/[0.06] text-text-primary',
+          : layout === 'futurista'
+            ? 'bg-slate-950/95 border-cyan-500/30 text-text-primary shadow-cyan-950/20'
+            : layout === 'neon'
+              ? 'bg-black border-brand-500 text-white shadow-brand-500/30'
+              : layout === 'corporativo'
+                ? 'bg-slate-50 border-slate-300 text-slate-800 shadow-sm border-t-brand-700'
+                : 'bg-surface-100 border-white/[0.06] text-text-primary',
     colorido:
       layout === 'moderno'
         ? 'bg-gradient-to-br from-brand-900/90 via-surface-100 to-accent-950/90 border-brand-500/20 text-white shadow-brand-950/20'
         : layout === 'academico'
           ? 'bg-gradient-to-br from-brand-950 via-brand-800/80 to-accent-950 border-brand-500/20 text-white shadow-brand-950/30'
-          : 'bg-gradient-to-br from-brand-900 to-brand-950 border-brand-800 text-white shadow-brand-950/30',
+          : layout === 'futurista'
+            ? 'bg-gradient-to-tr from-cyan-950 via-slate-900 to-purple-950 border-cyan-500/40 text-white'
+            : layout === 'neon'
+              ? 'bg-gradient-to-b from-slate-950 to-black border-pink-500 text-white shadow-pink-500/20'
+              : layout === 'corporativo'
+                ? 'bg-slate-100 border-slate-300 border-t-emerald-700 text-slate-800'
+                : 'bg-gradient-to-br from-brand-900 to-brand-950 border-brand-800 text-white shadow-brand-950/30',
   }
 
   // Text colors
@@ -210,7 +225,13 @@ export function CardBack({ data }: CardBackProps) {
         ? 'bg-white/[0.03] border border-white/[0.06]'
         : layout === 'academico'
           ? 'bg-brand-500/[0.03] border border-brand-500/[0.06]'
-          : 'bg-white/[0.02] border border-white/[0.04]'
+          : layout === 'futurista'
+            ? 'bg-cyan-950/20 border border-cyan-500/10 text-cyan-100'
+            : layout === 'neon'
+              ? 'bg-black border border-pink-500/30 text-white shadow-[0_0_8px_rgba(244,63,94,0.15)]'
+              : layout === 'corporativo'
+                ? 'bg-slate-200/40 border border-slate-300 rounded-none'
+                : 'bg-white/[0.02] border border-white/[0.04]'
 
   // Specialties
   const specialtyTagStyles: Record<string, string> = {
@@ -226,6 +247,9 @@ export function CardBack({ data }: CardBackProps) {
       temaModo === 'claro'
         ? 'bg-brand-500/15 border border-brand-500/30 text-brand-800 text-[11px]'
         : 'bg-brand-500/5 border border-brand-500/15 text-brand-400 text-[11px]',
+    futurista: 'bg-cyan-950/30 border border-cyan-500/20 text-cyan-300 text-[11px] rounded-full',
+    neon: 'bg-black border border-pink-500 text-pink-400 text-[11px] rounded-md shadow-[0_0_5px_rgba(244,63,94,0.2)]',
+    corporativo: 'bg-slate-200 border border-slate-300 text-slate-700 text-[11px] rounded-none',
   }
 
   // Badges
@@ -242,6 +266,9 @@ export function CardBack({ data }: CardBackProps) {
       temaModo === 'claro'
         ? 'bg-emerald-100/50 border border-emerald-300 text-emerald-800'
         : 'bg-accent-500/5 border border-accent-500/20 text-accent-400',
+    futurista: 'bg-purple-950/20 border border-purple-500/30 text-purple-300 rounded-full',
+    neon: 'bg-black border border-yellow-500 text-yellow-400 rounded-md shadow-[0_0_5px_rgba(234,179,8,0.2)]',
+    corporativo: 'bg-slate-100 border border-slate-300 text-slate-700 rounded-none',
   }
 
   // Linktree List Item styles
@@ -258,15 +285,23 @@ export function CardBack({ data }: CardBackProps) {
       temaModo === 'claro'
         ? 'bg-brand-500/10 border border-brand-500/20 text-slate-800 hover:bg-brand-500/20'
         : 'bg-brand-500/5 border border-brand-500/10 text-text-primary hover:bg-brand-500/10 hover:border-brand-500/20',
+    futurista: 'bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-900/60 rounded-full',
+    neon: 'bg-black border border-pink-500 text-pink-400 hover:bg-pink-500/15 shadow-[0_0_6px_rgba(244,63,94,0.15)] rounded-md',
+    corporativo: 'bg-slate-200 border border-slate-300 text-slate-800 hover:bg-slate-300 rounded-none',
   }
 
   return (
     <div
       className={cn(
-        'flex h-full min-h-[600px] flex-col rounded-2xl p-6 overflow-y-auto transition-colors duration-300',
+        'flex h-full min-h-[600px] flex-col rounded-2xl p-6 overflow-y-auto transition-all duration-300',
         containerBaseStyles[layout] ?? containerBaseStyles.minimalista,
         themeContainerStyles[temaModo]
       )}
+      style={{
+        backgroundColor: temaModo === 'colorido' ? card.customizacao?.cor_fundo || undefined : undefined,
+        borderColor: temaModo === 'colorido' ? card.customizacao?.cor_primaria || undefined : undefined,
+        borderTopColor: (layout === 'corporativo' && temaModo === 'colorido') ? card.customizacao?.cor_primaria || undefined : undefined,
+      }}
     >
       <div className="flex flex-col gap-5 flex-1">
         {/* Formation */}
@@ -313,19 +348,53 @@ export function CardBack({ data }: CardBackProps) {
         {activeBadges.length > 0 && (
           <section>
             <SectionTitle icon={Shield} title="Validações" layout={layout} temaModo={temaModo} />
-            <div className="space-y-1.5">
-              {activeBadges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className={cn(
-                    'flex items-center gap-2.5 rounded-xl px-3.5 py-2.5',
-                    badgeStyles[layout] ?? badgeStyles.minimalista,
-                  )}
-                >
-                  <Shield className="h-3.5 w-3.5 shrink-0" />
-                  <span className="text-xs font-medium">{badge.label}</span>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {activeBadges.map((badge) => {
+                const percentage = badge.meta_percentual !== undefined ? badge.meta_percentual : 75
+                const statusColor = percentage >= 80 ? 'green' : percentage >= 40 ? 'yellow' : 'red'
+
+                const statusColors = statusColor === 'green'
+                  ? {
+                      bg: 'bg-emerald-500/[0.04] border-emerald-500/20 text-emerald-400',
+                      bar: 'bg-emerald-500'
+                    }
+                  : statusColor === 'yellow'
+                  ? {
+                      bg: 'bg-amber-500/[0.04] border-amber-500/20 text-amber-400',
+                      bar: 'bg-amber-500'
+                    }
+                  : {
+                      bg: 'bg-rose-500/[0.04] border-rose-500/20 text-rose-400',
+                      bar: 'bg-rose-500'
+                    }
+
+                return (
+                  <div
+                    key={badge.id}
+                    className={cn(
+                      'flex flex-col gap-2 rounded-xl px-3.5 py-3 border transition-all duration-300',
+                      temaModo === 'claro'
+                        ? 'bg-slate-50 border-slate-200 text-slate-700'
+                        : statusColors.bg
+                    )}
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5 shrink-0 text-brand-400" />
+                        <span>{badge.label}</span>
+                      </div>
+                      <span className="font-mono text-[10px]">{percentage}%</span>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-200/20 dark:bg-white/10 rounded-full h-1 overflow-hidden">
+                      <div
+                        className={cn('h-full rounded-full transition-all duration-500', statusColors.bar)}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </section>
         )}

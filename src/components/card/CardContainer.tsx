@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import type { PublicCardData } from '@/lib/types/database'
 import { CardFront } from '@/components/card/CardFront'
@@ -12,7 +12,43 @@ interface CardContainerProps {
 }
 
 export function CardContainer({ data, showQrCode = true }: CardContainerProps) {
+  const [cardData, setCardData] = useState<PublicCardData>(data)
   const [isFlipped, setIsFlipped] = useState(false)
+
+  // Sync with prop updates
+  useEffect(() => {
+    setCardData(data)
+  }, [data])
+
+  // Sync with local storage changes for real-time dashboard preview updates
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const previewKey = `oneblankpage_preview_${data.profile.username}`
+
+    // Check if there is already a live preview in localStorage
+    const saved = localStorage.getItem(previewKey)
+    if (saved) {
+      try {
+        setCardData(JSON.parse(saved))
+      } catch (e) {
+        console.error('Error parsing preview data from localStorage', e)
+      }
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === previewKey && e.newValue) {
+        try {
+          setCardData(JSON.parse(e.newValue))
+        } catch (err) {
+          console.error('Error parsing live preview updates', err)
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [data.profile.username])
 
   const handleFlip = useCallback(() => {
     setIsFlipped((prev) => !prev)
@@ -53,10 +89,10 @@ export function CardContainer({ data, showQrCode = true }: CardContainerProps) {
           style={{ minHeight: '600px' }}
         >
           <div className="card-face">
-            <CardFront data={data} showQrCode={showQrCode} />
+            <CardFront data={cardData} showQrCode={showQrCode} />
           </div>
           <div className="card-face card-face-back">
-            <CardBack data={data} />
+            <CardBack data={cardData} />
           </div>
         </div>
       </div>

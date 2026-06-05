@@ -4,7 +4,7 @@
 export type PlanoEnum = 'simples' | 'medio' | 'completo'
 export type RoleEnum = 'usuario' | 'admin'
 export type StatusEnum = 'ativo' | 'dormindo' | 'apagado'
-export type LayoutEnum = 'minimalista' | 'moderno' | 'academico'
+export type LayoutEnum = 'minimalista' | 'moderno' | 'academico' | 'futurista' | 'neon' | 'corporativo'
 export type PortfolioTipo = 'github' | 'latex' | 'pdf' | 'outro'
 
 export interface Formacao {
@@ -71,6 +71,7 @@ export interface Badge {
   label: string
   codigo: string | null
   ativo: boolean
+  meta_percentual?: number
   created_at: string
 }
 
