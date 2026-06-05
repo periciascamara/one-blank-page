@@ -23,7 +23,7 @@ export default function QrCodePage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
+        const { data: profile } = (await supabase.from('profiles').select('username').eq('id', user.id).single()) as { data: { username: string } | null }
         if (profile && profile.username) {
           setUsername(profile.username)
           if (typeof window !== 'undefined') {

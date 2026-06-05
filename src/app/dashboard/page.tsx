@@ -58,13 +58,13 @@ const evolutionData = {
 }
 
 // Top Links Click Frequencies
-const linksClickData = {
+const linksClickData: Record<string, { label: string; val: number }[]> = {
   '7d': [],
   '30d': [],
 }
 
 // Top Social Networks Click Frequencies
-const socialsClickData = {
+const socialsClickData: Record<string, { label: string; val: number }[]> = {
   '7d': [],
   '30d': [],
 }
@@ -100,7 +100,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const supabase = createClient()
+        const supabase = createClient() as any
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session?.user) return
@@ -186,7 +186,7 @@ export default function DashboardPage() {
     const newStatus = cardStatus === 'ativo' ? 'dormindo' : 'ativo'
     setCardStatus(newStatus)
     
-    const supabase = createClient()
+    const supabase = createClient() as any
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
       await (supabase.from('cards').update as any)({ status: newStatus }).eq('user_id', session.user.id)

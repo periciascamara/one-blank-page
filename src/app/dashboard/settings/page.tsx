@@ -44,11 +44,11 @@ export default function SettingsPage() {
     const loadData = async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
+        const supabase = createClient() as any
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        const { data: profile } = (await supabase.from('profiles').select('*').eq('id', user.id).single()) as { data: any | null }
         if (profile) {
           setAccountInfo({
             nome: profile.nome || user.email?.split('@')[0] || '',
@@ -56,7 +56,7 @@ export default function SettingsPage() {
             plano: profile.plano || 'simples'
           })
 
-          const { data: card } = await supabase.from('cards').select('status').eq('user_id', profile.id).maybeSingle()
+          const { data: card } = (await supabase.from('cards').select('status').eq('user_id', profile.id).maybeSingle()) as { data: any | null }
           if (card && card.status) {
             setCardStatus(card.status)
           }
@@ -77,7 +77,7 @@ export default function SettingsPage() {
 
     try {
       const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      const supabase = createClient() as any
       
       const { error } = await supabase.auth.updateUser({
         password: newPassword
@@ -104,7 +104,7 @@ export default function SettingsPage() {
     
     try {
       const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      const supabase = createClient() as any
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // Apenas marca o cartão como apagado, para evitar quebra de integridade
@@ -124,7 +124,7 @@ export default function SettingsPage() {
     setCardStatus(newStatus)
     try {
       const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      const supabase = createClient() as any
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         await supabase.from('cards').update({ status: newStatus }).eq('user_id', user.id)
