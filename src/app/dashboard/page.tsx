@@ -34,76 +34,43 @@ import type { StatusEnum, PlanoEnum, LayoutEnum } from '@/lib/types/database'
 // Mock data removed: Real data is fetched via Supabase
 
 const mockStats = {
-  visualizacoes: 1247,
-  cliques: 328,
-  qrcodes: 56,
-  tendencia_visualizacoes: 12.5,
-  tendencia_cliques: 8.3,
-  tendencia_qrcodes: -2.1,
+  visualizacoes: 0,
+  cliques: 0,
+  qrcodes: 0,
+  tendencia_visualizacoes: 0,
+  tendencia_cliques: 0,
+  tendencia_qrcodes: 0,
 }
 
 // Click Evolution Chart Data Points
 const evolutionData = {
   '7d': [
-    { label: '28/05', val: 12 },
-    { label: '29/05', val: 19 },
-    { label: '30/05', val: 15 },
-    { label: '31/05', val: 28 },
-    { label: '01/06', val: 22 },
-    { label: '02/06', val: 35 },
-    { label: '03/06', val: 42 },
+    { label: 'Dom', val: 0 }, { label: 'Seg', val: 0 }, { label: 'Ter', val: 0 },
+    { label: 'Qua', val: 0 }, { label: 'Qui', val: 0 }, { label: 'Sex', val: 0 }, { label: 'Sáb', val: 0 },
   ],
   '30d': [
-    { label: 'Semana 1', val: 65 },
-    { label: 'Semana 2', val: 82 },
-    { label: 'Semana 3', val: 110 },
-    { label: 'Semana 4', val: 135 },
+    { label: 'Semana 1', val: 0 }, { label: 'Semana 2', val: 0 },
+    { label: 'Semana 3', val: 0 }, { label: 'Semana 4', val: 0 },
   ],
   '90d': [
-    { label: 'Março', val: 280 },
-    { label: 'Abril', val: 390 },
-    { label: 'Maio', val: 490 },
-    { label: 'Junho', val: 580 },
+    { label: 'Mês 1', val: 0 }, { label: 'Mês 2', val: 0 }, { label: 'Mês 3', val: 0 },
   ],
 }
 
 // Top Links Click Frequencies
 const linksClickData = {
-  '7d': [
-    { label: 'Consulta (Doctoralia)', val: 24, cat: 'Consultas' },
-    { label: 'Artigos Publicados (PubMed)', val: 15, cat: 'Artigos' },
-    { label: 'Currículo Lattes', val: 8, cat: 'Outros' },
-  ],
-  '30d': [
-    { label: 'Consulta (Doctoralia)', val: 184, cat: 'Consultas' },
-    { label: 'Artigos Publicados (PubMed)', val: 98, cat: 'Artigos' },
-    { label: 'Currículo Lattes', val: 46, cat: 'Outros' },
-  ],
+  '7d': [],
+  '30d': [],
 }
 
 // Top Social Networks Click Frequencies
 const socialsClickData = {
-  '7d': [
-    { label: 'Instagram', val: 32 },
-    { label: 'LinkedIn', val: 24 },
-    { label: 'Website', val: 12 },
-    { label: 'YouTube', val: 5 },
-  ],
-  '30d': [
-    { label: 'Instagram', val: 142 },
-    { label: 'LinkedIn', val: 118 },
-    { label: 'Website', val: 48 },
-    { label: 'YouTube', val: 20 },
-  ],
+  '7d': [],
+  '30d': [],
 }
 
 // Card modification logs
-const mockModificationLogs = [
-  { id: '1', acao: 'Alteração de Layout', data: '04/06/2026', detalhes: 'Layout atualizado de "minimalista" para "moderno".' },
-  { id: '2', acao: 'Competência Ativada', data: '02/06/2026', detalhes: 'Ativou o badge "IA Frontier" no cartão.' },
-  { id: '3', acao: 'Formação Adicionada', data: '30/05/2026', detalhes: 'Incluiu "Residência em Cardiologia" pela InCor USP.' },
-  { id: '4', acao: 'Criação do Perfil', data: '15/05/2026', detalhes: 'Configurações básicas e contatos iniciais definidos.' },
-]
+const mockModificationLogs: any[] = []
 
 const container = {
   hidden: { opacity: 0 },
