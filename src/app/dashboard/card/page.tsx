@@ -36,6 +36,7 @@ export default function CardEditorPage() {
   const [showPreviewBack, setShowPreviewBack] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Sync edited card data to localStorage for real-time update in open public card preview tabs
   useEffect(() => {
@@ -197,6 +198,7 @@ export default function CardEditorPage() {
   const handleSave = async () => {
     if (!data) return
     setIsSaving(true)
+    setErrorMessage(null)
     
     try {
       const { createClient } = await import('@/lib/supabase/client')
@@ -305,7 +307,7 @@ export default function CardEditorPage() {
     } catch (err: any) {
       console.error('Error saving card details to Supabase:', err)
       const errorMsg = err?.message || JSON.stringify(err) || 'Erro desconhecido'
-      alert('Erro ao salvar no Supabase:\n' + errorMsg + '\n\nAs alterações foram salvas localmente.')
+      setErrorMessage(`Erro ao salvar no Supabase: ${errorMsg}`)
     } finally {
       setIsSaving(false)
     }
@@ -1145,6 +1147,16 @@ export default function CardEditorPage() {
               >
                 <Check className="h-3.5 w-3.5" />
                 Alterações salvas com sucesso!
+              </motion.span>
+            )}
+            {errorMessage && (
+              <motion.span
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="text-red-500 text-xs font-medium max-w-xs break-words"
+              >
+                {errorMessage}
               </motion.span>
             )}
           </AnimatePresence>
