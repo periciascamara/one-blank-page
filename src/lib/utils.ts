@@ -23,6 +23,7 @@ export function formatDate(date: string | Date): string {
 }
 
 export function getPublicCardUrl(username: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (vercelUrl ? `https://${vercelUrl}` : 'http://localhost:3000');
   return `${baseUrl}/p/${username}`
 }
