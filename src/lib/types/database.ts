@@ -33,6 +33,14 @@ export interface Customizacao {
   imagem_fundo_url?: string
   nfc_posicao?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   tema_modo?: 'claro' | 'escuro' | 'colorido'
+  curriculo_url?: string
+  crm_dados?: {
+    uf: string
+    numero: string
+    situacao: string
+    especialidades: string
+    validado_em: string
+  }
 }
 
 export interface Profile {
@@ -110,6 +118,15 @@ export interface PlatformSetting {
   updated_at: string
 }
 
+export interface AnalyticsEvent {
+  id: string
+  user_id: string
+  event_type: string
+  target_id: string | null
+  target_label: string | null
+  created_at: string
+}
+
 // Supabase Database type for SDK generics
 export interface Database {
   public: {
@@ -148,6 +165,11 @@ export interface Database {
         Row: PlatformSetting
         Insert: PlatformSetting
         Update: Partial<Omit<PlatformSetting, 'key'>>
+      }
+      analytics_events: {
+        Row: AnalyticsEvent
+        Insert: Omit<AnalyticsEvent, 'id' | 'created_at'>
+        Update: Partial<Omit<AnalyticsEvent, 'id' | 'user_id' | 'created_at'>>
       }
     }
     Enums: {

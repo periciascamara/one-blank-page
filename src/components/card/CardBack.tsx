@@ -7,7 +7,11 @@ import {
   Globe,
   ExternalLink,
   ChevronDown,
+  FileText,
+  Copy,
+  CheckCircle2,
 } from 'lucide-react'
+import { useState } from 'react'
 import type { PublicCardData } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
 
@@ -115,12 +119,14 @@ function SocialButton({
   label,
   layout,
   temaModo,
+  onTrack,
 }: {
   icon: React.ComponentType<{ className?: string }>
   href: string
   label: string
   layout: string
   temaModo: 'claro' | 'escuro' | 'colorido'
+  onTrack?: () => void
 }) {
   const styles: Record<string, string> = {
     minimalista:
@@ -140,7 +146,10 @@ function SocialButton({
   return (
     <a
       href={href}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (onTrack) onTrack()
+      }}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
@@ -155,16 +164,34 @@ function SocialButton({
 }
 
 export function CardBack({ data }: CardBackProps) {
+  const [copied, setCopied] = useState(false)
   const { card, badges, linktree_links } = data
   const layout = card.layout
   const { redes_sociais, formacao, especialidades } = card
   const temaModo = card.customizacao?.tema_modo || 'escuro'
+  const curriculoUrl = card.customizacao?.curriculo_url
 
-  const activeLinks = linktree_links
-    .filter((link) => link.ativo)
-    .sort((a, b) => a.ordem - b.ordem)
+  const handleTrackEvent = (eventType: string, targetId: string, targetLabel: string) => {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: card.user_id,
+        event_type: eventType,
+        target_id: targetId,
+        target_label: targetLabel
+      })
+    }).catch(console.error)
+  }
 
-  const activeBadges = badges.filter((badge) => badge.ativo)
+  const handleCopyMarkdown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!curriculoUrl) return
+    const markdownText = `[Currículo - ${card.nome}](${curriculoUrl})`
+    navigator.clipboard.writeText(markdownText)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const hasSocials =
     redes_sociais.linkedin ||
@@ -344,82 +371,89 @@ export function CardBack({ data }: CardBackProps) {
           </section>
         )}
 
-        {/* Badges */}
-        {activeBadges.length > 0 && (
+
+
+        {/* CFM Validation Badge */}
+        {['ATIVO', 'REGULAR'].includes(card.customizacao?.crm_dados?.situacao?.toUpperCase() || '') && (
           <section>
-            <SectionTitle icon={Shield} title="Validações" layout={layout} temaModo={temaModo} />
-            <div className="space-y-2">
-              {activeBadges.map((badge) => {
-                const percentage = badge.meta_percentual !== undefined ? badge.meta_percentual : 75
-                const statusColor = percentage >= 80 ? 'green' : percentage >= 40 ? 'yellow' : 'red'
-
-                const statusColors = statusColor === 'green'
-                  ? {
-                      bg: 'bg-emerald-500/[0.04] border-emerald-500/20 text-emerald-400',
-                      bar: 'bg-emerald-500'
-                    }
-                  : statusColor === 'yellow'
-                  ? {
-                      bg: 'bg-amber-500/[0.04] border-amber-500/20 text-amber-400',
-                      bar: 'bg-amber-500'
-                    }
-                  : {
-                      bg: 'bg-rose-500/[0.04] border-rose-500/20 text-rose-400',
-                      bar: 'bg-rose-500'
-                    }
-
-                return (
-                  <div
-                    key={badge.id}
-                    className={cn(
-                      'flex flex-col gap-2 rounded-xl px-3.5 py-3 border transition-all duration-300',
-                      temaModo === 'claro'
-                        ? 'bg-slate-50 border-slate-200 text-slate-700'
-                        : statusColors.bg
-                    )}
-                  >
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-3.5 w-3.5 shrink-0 text-brand-400" />
-                        <span>{badge.label}</span>
-                      </div>
-                      <span className="font-mono text-[10px]">{percentage}%</span>
-                    </div>
-                    {/* Progress Bar */}
-                    <div className="w-full bg-slate-200/20 dark:bg-white/10 rounded-full h-1 overflow-hidden">
-                      <div
-                        className={cn('h-full rounded-full transition-all duration-500', statusColors.bar)}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+            <div className="rounded-xl border border-success/30 bg-success/5 p-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-success/10 rounded-full blur-xl -mr-10 -mt-10" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="h-5 w-5 text-success" />
+                  <h3 className="text-sm font-bold text-success uppercase tracking-wider">
+                    CRM Autenticado (CFM)
+                  </h3>
+                </div>
+                
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center border-b border-success/10 pb-1.5">
+                    <span className="font-medium text-success/80">Registro:</span>
+                    <span className="font-bold text-success">CRM-{card.customizacao?.crm_dados?.uf} {card.customizacao?.crm_dados?.numero}</span>
                   </div>
-                )
-              })}
+                  <div className="flex justify-between items-center border-b border-success/10 pb-1.5">
+                    <span className="font-medium text-success/80">Situação:</span>
+                    <span className="font-bold text-success">{card.customizacao?.crm_dados?.situacao}</span>
+                  </div>
+                  
+                  {card.customizacao?.crm_dados?.especialidades && (
+                    <div className="pt-1.5">
+                      <span className="font-medium text-success/80 block mb-1.5">Especialidades (RQE):</span>
+                      <ul className="space-y-1">
+                        {card.customizacao?.crm_dados?.especialidades.split(',').map((spec, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-success/90">
+                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-success/50 shrink-0" />
+                            <span className="leading-tight">{spec.trim()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
         )}
 
-        {/* Linktree Links */}
-        {activeLinks.length > 0 && (
+        {/* Curriculum */}
+        {curriculoUrl && (
           <section>
-            <SectionTitle icon={ExternalLink} title="Links" layout={layout} temaModo={temaModo} />
-            <div className="space-y-2">
-              {activeLinks.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  onClick={(e) => e.stopPropagation()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    'flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300',
-                    linkStyles[layout] ?? linkStyles.minimalista,
-                  )}
-                >
-                  <span>{link.label}</span>
-                  <ExternalLink className={cn('h-3.5 w-3.5', tertiaryTextClass)} />
-                </a>
-              ))}
+            <SectionTitle icon={FileText} title="Currículo Profissional" layout={layout} temaModo={temaModo} />
+            <div className="flex flex-col gap-2">
+              <a
+                href={curriculoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleTrackEvent('curriculo_click', 'curriculo_pdf', 'Acessar PDF')
+                }}
+                className={cn(
+                  'flex items-center justify-between rounded-xl px-4 py-3 font-medium transition-all duration-300 w-full shrink-0 text-sm',
+                  temaModo === 'claro'
+                    ? 'bg-slate-100 border border-slate-300 text-slate-800 hover:bg-slate-200'
+                    : 'bg-white/5 border border-white/10 text-text-primary hover:bg-white/10'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span>Acessar PDF</span>
+                </div>
+                <ExternalLink className="h-4 w-4 opacity-70" />
+              </a>
+              
+              <button
+                onClick={handleCopyMarkdown}
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-all duration-300 w-full text-xs border border-dashed',
+                  temaModo === 'claro'
+                    ? 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    : 'border-white/20 text-text-secondary hover:bg-white/5 hover:text-white'
+                )}
+              >
+                {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? 'Markdown Copiado!' : 'Copiar Link Markdown'}
+              </button>
             </div>
           </section>
         )}
@@ -436,6 +470,7 @@ export function CardBack({ data }: CardBackProps) {
                   label="LinkedIn"
                   layout={layout}
                   temaModo={temaModo}
+                  onTrack={() => handleTrackEvent('social_click', 'linkedin', 'LinkedIn')}
                 />
               )}
               {redes_sociais.instagram && (
@@ -445,6 +480,7 @@ export function CardBack({ data }: CardBackProps) {
                   label="Instagram"
                   layout={layout}
                   temaModo={temaModo}
+                  onTrack={() => handleTrackEvent('social_click', 'instagram', 'Instagram')}
                 />
               )}
               {redes_sociais.tiktok && (
@@ -454,6 +490,7 @@ export function CardBack({ data }: CardBackProps) {
                   label="TikTok"
                   layout={layout}
                   temaModo={temaModo}
+                  onTrack={() => handleTrackEvent('social_click', 'tiktok', 'TikTok')}
                 />
               )}
               {redes_sociais.youtube && (
@@ -463,6 +500,7 @@ export function CardBack({ data }: CardBackProps) {
                   label="YouTube"
                   layout={layout}
                   temaModo={temaModo}
+                  onTrack={() => handleTrackEvent('social_click', 'youtube', 'YouTube')}
                 />
               )}
               {redes_sociais.site && (
@@ -472,6 +510,7 @@ export function CardBack({ data }: CardBackProps) {
                   label="Website"
                   layout={layout}
                   temaModo={temaModo}
+                  onTrack={() => handleTrackEvent('social_click', 'site', 'Website')}
                 />
               )}
             </div>

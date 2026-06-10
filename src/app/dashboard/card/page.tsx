@@ -13,12 +13,15 @@ import {
   Plus,
   Trash2,
   ChevronDown,
+  Award,
   Globe,
   Upload,
   Save,
   Check,
   Shield,
   Loader2,
+  ExternalLink,
+  Camera,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CardFront } from '@/components/card/CardFront'
@@ -27,7 +30,7 @@ import type { Card, Badge, LinktreeLink, PublicCardData, PlanoEnum, StatusEnum }
 
 import type { LayoutEnum } from '@/lib/types/database'
 
-type TabType = 'basico' | 'contatos' | 'formacao' | 'links' | 'badges' | 'aparencia'
+type TabType = 'basico' | 'contatos' | 'formacao' | 'crm' | 'links' | 'badges' | 'aparencia'
 
 export default function CardEditorPage() {
   const [activeTab, setActiveTab] = useState<TabType>('basico')
@@ -143,6 +146,9 @@ export default function CardEditorPage() {
   // Specialty Tag Input State
   const [newSpecialty, setNewSpecialty] = useState('')
 
+  // Custom Badge State
+  const [newBadgeLabel, setNewBadgeLabel] = useState('')
+
   // Linktree Edit State
   const [newLinkLabel, setNewLinkLabel] = useState('')
   const [newLinkUrl, setNewLinkUrl] = useState('')
@@ -188,11 +194,34 @@ export default function CardEditorPage() {
     }) : null)
   }
 
+  const removeBadge = (id: string) => {
+    setData((prev) => prev ? ({
+      ...prev,
+      badges: prev.badges.filter((b) => b.id !== id),
+    }) : null)
+  }
+
+  const addCustomBadge = () => {
+    if (!newBadgeLabel.trim() || !data) return
+    const newBadge: Badge = {
+      id: `b-custom-${Date.now()}`,
+      user_id: data.card.user_id,
+      label: newBadgeLabel.trim(),
+      codigo: `CUST-${Date.now()}`,
+      ativo: true,
+      meta_percentual: 100,
+      created_at: new Date().toISOString(),
+    }
+    setData((prev) => prev ? ({
+      ...prev,
+      badges: [...prev.badges, newBadge],
+    }) : null)
+    setNewBadgeLabel('')
+  }
+
   const isFeatureLocked = (featurePlan: PlanoEnum) => {
-    if (userPlan === 'completo') return false
-    if (userPlan === 'medio' && featurePlan !== 'completo') return false
-    if (userPlan === 'simples' && featurePlan === 'simples') return false
-    return true
+    // Todas as funcionalidades estão temporariamente liberadas
+    return false
   }
 
   const handleSave = async () => {
@@ -341,7 +370,7 @@ export default function CardEditorPage() {
     }) : null)
   }
 
-  const handleCustomizationChange = (field: keyof Card['customizacao'], value: string) => {
+  const handleCustomizationChange = (field: keyof Card['customizacao'], value: any) => {
     setData((prev) => prev ? ({
       ...prev,
       card: {
@@ -437,14 +466,77 @@ export default function CardEditorPage() {
     }) : null)
   }
 
+  const [crmUF, setCrmUF] = useState('')
+  const [crmNumero, setCrmNumero] = useState('')
+  const [isCrmValidating, setIsCrmValidating] = useState(false)
+  const [crmProgress, setCrmProgress] = useState<{ step: string, percentage: number } | null>(null)
+  const [crmError, setCrmError] = useState<string | null>(null)
+
   const tabs = [
     { id: 'basico', label: 'Básico', icon: User },
     { id: 'contatos', label: 'Contatos', icon: Phone },
     { id: 'formacao', label: 'Formação', icon: GraduationCap },
+    { id: 'crm', label: 'CRM/CFM', icon: Award },
     { id: 'links', label: 'Links', icon: LinkIcon },
     { id: 'badges', label: 'Badges', icon: Shield },
     { id: 'aparencia', label: 'Aparência', icon: Palette },
   ]
+
+  const handleValidateCrm = async () => {
+    if (!crmUF || !crmNumero) {
+      setCrmError('Por favor, informe o UF e o CRM.')
+      return
+    }
+    
+    setIsCrmValidating(true)
+    setCrmError(null)
+    setCrmProgress({ step: 'Conectando aos servidores CFM...', percentage: 10 })
+
+    try {
+      await new Promise(r => setTimeout(r, 600))
+      setCrmProgress({ step: 'Buscando credenciais do profissional...', percentage: 40 })
+
+      const res = await fetch(`/api/crm?uf=${crmUF}&numero_registro=${crmNumero}`)
+      const json = await res.json()
+
+      await new Promise(r => setTimeout(r, 600))
+      setCrmProgress({ step: 'Verificando situação e especialidades...', percentage: 70 })
+
+      if (!res.ok) {
+        throw new Error(json.error || 'CRM inválido ou não encontrado.')
+      }
+
+      if (json.situacao !== 'ATIVO' && json.situacao !== 'REGULAR') {
+        throw new Error(`Este CRM encontra-se: ${json.situacao}. Apenas CRMs ativos/regulares podem ser validados.`)
+      }
+
+      await new Promise(r => setTimeout(r, 400))
+      setCrmProgress({ step: 'Concluindo validação...', percentage: 90 })
+
+      handleCustomizationChange('crm_dados', {
+        uf: json.uf,
+        numero: json.numero_registro,
+        situacao: json.situacao,
+        especialidades: json.especialidades || '',
+        validado_em: new Date().toISOString()
+      })
+      
+      setCrmProgress({ step: 'Sucesso!', percentage: 100 })
+      await new Promise(r => setTimeout(r, 300))
+
+    } catch (err: any) {
+      setCrmError(err.message)
+    } finally {
+      setIsCrmValidating(false)
+      setCrmProgress(null)
+    }
+  }
+
+  const handleRemoveCrm = () => {
+    handleCustomizationChange('crm_dados', null)
+    setCrmUF('')
+    setCrmNumero('')
+  }
 
   if (isLoading || !data) {
     return (
@@ -463,6 +555,12 @@ export default function CardEditorPage() {
           <p className="text-text-tertiary text-sm mt-1">
             Personalize seu perfil profissional e atualize suas informações públicas em tempo real.
           </p>
+          <div className="mt-4 p-3 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-brand-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-brand-100/90 leading-relaxed">
+              <strong className="font-semibold text-brand-300">Acesso Premium Liberado:</strong> Aproveite o uso completo de todas as funcionalidades (layouts, badges customizados, etc) gratuitamente. Em breve, estas funções avançadas serão disponibilizadas exclusivamente para usuários dos planos pagos.
+            </p>
+          </div>
         </div>
 
         {/* Custom Tabs */}
@@ -581,6 +679,26 @@ export default function CardEditorPage() {
                 </div>
                 <p className="text-[10px] text-text-tertiary">Pressione Enter para adicionar.</p>
               </div>
+
+              {/* Currículo Profissional (PDF) */}
+              <div className="space-y-2 pt-4 border-t border-white/[0.06]">
+                <label className="text-xs font-medium text-text-secondary">Currículo Profissional (PDF)</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder="URL pública do arquivo PDF (Ex: Google Drive, Dropbox...)"
+                    value={data.card.customizacao?.curriculo_url || ''}
+                    onChange={(e) => handleCustomizationChange('curriculo_url', e.target.value)}
+                    className="flex-1 rounded-xl border border-white/8 bg-surface-200/50 px-4 py-2.5 text-sm text-text-primary outline-none focus:border-brand-500/50"
+                  />
+                  <div className="glass-button text-xs font-semibold text-brand-300 rounded-xl px-4 py-2.5 flex items-center justify-center gap-1.5 shrink-0 relative overflow-hidden group cursor-pointer">
+                    <Upload className="h-4 w-4" />
+                    Upload
+                    <input type="file" accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer" title="Em breve (por enquanto insira o link acima)" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-text-tertiary">Insira um link direto para seu currículo em PDF. Ele aparecerá no verso do cartão.</p>
+              </div>
             </div>
           )}
 
@@ -695,6 +813,103 @@ export default function CardEditorPage() {
                     Adicionar
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab CRM/CFM */}
+          {activeTab === 'crm' && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Award className="h-4 w-4 text-brand-400" />
+                Validação de CRM (Selo CFM)
+              </h3>
+              
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4 space-y-4">
+                {data.card.customizacao?.crm_dados ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-success">
+                      <Shield className="h-5 w-5" />
+                      <span className="text-sm font-bold">CRM Validado e Ativo!</span>
+                    </div>
+                    <div className="text-xs text-text-secondary space-y-1">
+                      <p><strong>CRM:</strong> {data.card.customizacao.crm_dados.numero} - {data.card.customizacao.crm_dados.uf}</p>
+                      <p><strong>Situação:</strong> {data.card.customizacao.crm_dados.situacao}</p>
+                      {data.card.customizacao.crm_dados.especialidades && (
+                        <p><strong>Especialidades:</strong> {data.card.customizacao.crm_dados.especialidades}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleRemoveCrm}
+                      className="mt-2 text-xs font-semibold text-error hover:text-error/80 self-start transition-colors"
+                    >
+                      Remover Autenticação
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-text-tertiary">
+                      Conecte-se à base de dados para validar seu CRM. Uma vez validado, um selo oficial será exibido no verso do seu cartão para seus pacientes.
+                    </p>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-1">
+                        <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+                          Estado (UF)
+                        </label>
+                        <select
+                          value={crmUF}
+                          onChange={(e) => setCrmUF(e.target.value)}
+                          className="w-full rounded-lg border border-white/8 bg-surface-200/50 px-3 py-2 text-xs text-text-primary outline-none focus:border-brand-500/50 appearance-none"
+                        >
+                          <option value="">Selecione</option>
+                          {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
+                            <option key={uf} value={uf}>{uf}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+                          Número do CRM
+                        </label>
+                        <input
+                          type="text"
+                          value={crmNumero}
+                          onChange={(e) => setCrmNumero(e.target.value)}
+                          placeholder="Somente números"
+                          className="w-full rounded-lg border border-white/8 bg-surface-200/50 px-3 py-2 text-xs text-text-primary outline-none focus:border-brand-500/50"
+                        />
+                      </div>
+                    </div>
+                    
+                    {crmError && (
+                      <p className="text-xs font-medium text-error mt-2">{crmError}</p>
+                    )}
+
+                    {crmProgress ? (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between text-xs text-text-secondary font-medium">
+                          <span>{crmProgress.step}</span>
+                          <span>{crmProgress.percentage}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-brand-500 transition-all duration-300 ease-out"
+                            style={{ width: `${crmProgress.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleValidateCrm}
+                        disabled={isCrmValidating}
+                        className="w-full mt-2 glass-button text-sm font-semibold text-brand-300 rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                      >
+                        <Award className="h-4 w-4" /> Validar CRM
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -906,6 +1121,49 @@ export default function CardEditorPage() {
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* Competências Personalizadas (Novas) */}
+              <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+                <p className="text-xs font-semibold text-text-secondary">Criar Badges Customizados</p>
+                
+                {/* Lista de customizados */}
+                {data.badges.filter(b => b.codigo?.startsWith('CUST-')).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {data.badges.filter(b => b.codigo?.startsWith('CUST-')).map(badge => (
+                      <span
+                        key={badge.id}
+                        className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1 text-xs text-white font-medium"
+                      >
+                        {badge.label}
+                        <button
+                          onClick={() => removeBadge(badge.id)}
+                          className="text-white/40 hover:text-error ml-1"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ex: Urgência e Emergência"
+                    value={newBadgeLabel}
+                    onChange={(e) => setNewBadgeLabel(e.target.value)}
+                    className="flex-1 rounded-lg border border-white/8 bg-surface-200/50 px-3 py-2 text-xs text-text-primary outline-none focus:border-brand-500/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomBadge}
+                    className="glass-button text-xs font-semibold text-brand-300 rounded-lg px-4 py-2 flex items-center justify-center gap-1 shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Criar Badge
+                  </button>
                 </div>
               </div>
 
