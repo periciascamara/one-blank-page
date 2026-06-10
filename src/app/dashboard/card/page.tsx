@@ -470,7 +470,20 @@ export default function CardEditorPage() {
   const [crmNumero, setCrmNumero] = useState('')
   const [isCrmValidating, setIsCrmValidating] = useState(false)
   const [crmProgress, setCrmProgress] = useState<{ step: string, percentage: number } | null>(null)
+  const [crmElapsed, setCrmElapsed] = useState(0)
   const [crmError, setCrmError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (isCrmValidating) {
+      timer = setInterval(() => {
+        setCrmElapsed((prev) => prev + 1)
+      }, 1000)
+    } else {
+      setCrmElapsed(0)
+    }
+    return () => clearInterval(timer)
+  }, [isCrmValidating])
 
   const tabs = [
     { id: 'basico', label: 'Básico', icon: User },
@@ -888,11 +901,19 @@ export default function CardEditorPage() {
 
                     {crmProgress ? (
                       <div className="mt-4 space-y-2">
-                        <div className="flex justify-between text-xs text-text-secondary font-medium">
-                          <span>{crmProgress.step}</span>
-                          <span>{crmProgress.percentage}%</span>
+                        <div className="flex justify-between text-xs text-text-secondary font-medium items-center">
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 className="h-3 w-3 animate-spin text-brand-400" />
+                            {crmProgress.step}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-text-tertiary">
+                              {crmElapsed}s
+                            </span>
+                            <span>{crmProgress.percentage}%</span>
+                          </div>
                         </div>
-                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden relative">
                           <div 
                             className="h-full bg-brand-500 transition-all duration-300 ease-out"
                             style={{ width: `${crmProgress.percentage}%` }}
