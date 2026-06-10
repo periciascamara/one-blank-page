@@ -14,6 +14,9 @@ import { SleepingCard } from '@/components/card/SleepingCard'
 import { PublicShareBar } from '@/components/card/PublicShareBar'
 import { createClient } from '@/lib/supabase/server'
 
+export const revalidate = 0
+export const dynamic = 'force-dynamic'
+
 interface PageProps {
   params: Promise<{ username: string }>
 }
