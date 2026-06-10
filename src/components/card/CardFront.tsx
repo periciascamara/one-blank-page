@@ -474,10 +474,25 @@ export function CardFront({ data }: CardFrontProps) {
         </div>
       )}
 
-      {/* Hint */}
-      <div className="flex items-center gap-1 pt-2 pb-1">
-        <ChevronDown className={cn('h-3.5 w-3.5 animate-bounce', tertiaryTextClass)} />
-        <span className={cn('text-xs', tertiaryTextClass)}>Toque para ver mais</span>
+      {/* Footer Area */}
+      <div className="flex flex-col items-center gap-1.5 pt-2 pb-1 mt-auto">
+        {/* Hint */}
+        <div className="flex items-center gap-1">
+          <ChevronDown className={cn('h-3.5 w-3.5 animate-bounce', tertiaryTextClass)} />
+          <span className={cn('text-xs', tertiaryTextClass)}>Toque para ver mais</span>
+        </div>
+        
+        {/* Branding Link */}
+        <a 
+          href="https://one-blank-page.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className={cn("text-[9px] hover:underline flex items-center gap-1 opacity-60 transition-opacity hover:opacity-100 font-medium", tertiaryTextClass)}
+        >
+          <Sparkles className="h-2.5 w-2.5" />
+          One Blank Page
+        </a>
       </div>
     </div>
   )
