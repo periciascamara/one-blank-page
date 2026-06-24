@@ -21,16 +21,18 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient()
 
   // 1. Fetch total users & plan distribution
-  const { data: profiles, error: profilesError } = await supabase
+  const { data: profilesData, error: profilesError } = await supabase
     .from('profiles')
     .select('id, plano, created_at, username')
     .order('created_at', { ascending: false })
+  const profiles = profilesData as any[]
 
   // 2. Fetch cards
-  const { data: cards, error: cardsError } = await supabase
+  const { data: cardsData, error: cardsError } = await supabase
     .from('cards')
     .select('id, status, created_at, nome')
     .order('created_at', { ascending: false })
+  const cards = cardsData as any[]
 
   const totalUsers = profiles?.length || 0
   const totalCards = cards?.length || 0
