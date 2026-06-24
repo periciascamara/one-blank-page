@@ -9,10 +9,15 @@ export default function Hero() {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated background */}
       <div className="absolute inset-0">
+        {/* Background Image Overlay */}
+        <div 
+          className="absolute inset-0 bg-[url('/hero-bg.png')] bg-cover bg-center bg-no-repeat opacity-30"
+        />
+        
         {/* Gradient orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-[120px] animate-float" />
-        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-accent-500/10 rounded-full blur-[100px] animate-float" style={{ animationDelay: '3s' }} />
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-brand-700/8 rounded-full blur-[80px] animate-float" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/15 rounded-full blur-[120px] animate-float mix-blend-screen" />
+        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-accent-500/15 rounded-full blur-[100px] animate-float mix-blend-screen" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-brand-700/10 rounded-full blur-[80px] animate-float mix-blend-screen" style={{ animationDelay: '1.5s' }} />
 
         {/* Grid pattern */}
         <div

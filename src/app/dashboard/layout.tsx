@@ -66,6 +66,7 @@ export default function DashboardLayout({
     username: string
     plano: PlanoEnum
     foto_url: string | null
+    role: string
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -103,6 +104,7 @@ export default function DashboardLayout({
             username: profile.username || '',
             plano: (profile.plano as PlanoEnum) || 'simples',
             foto_url: profile.foto_url,
+            role: profile.role || 'usuario',
           })
         } else {
           setErrorMsg("Perfil não encontrado no banco de dados.")
@@ -280,6 +282,18 @@ export default function DashboardLayout({
                 </Link>
               )
             })}
+
+            {mockUser.role === 'admin' && (
+              <Link
+                href="/admin"
+                className={cn(
+                  'group relative mt-4 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20'
+                )}
+              >
+                <Shield className="relative z-10 h-5 w-5 shrink-0 transition-colors" />
+                <span className="relative z-10">Ir para Painel Admin</span>
+              </Link>
+            )}
           </nav>
 
           {/* Bottom section */}
