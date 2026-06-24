@@ -227,8 +227,8 @@ export default function DashboardPage() {
     })
 
     setMockStats({
-      visualizacoes: views / 3, // views calculated 3 times in buildEvolution, adjust it
-      cliques: clicks / 3,
+      visualizacoes: events.filter(e => e.event_type === 'page_view').length,
+      cliques: events.filter(e => e.event_type === 'link_click' || e.event_type === 'social_click').length,
       qrcodes: events.filter(e => e.event_type === 'qrcode_download').length,
       tendencia_visualizacoes: 10,
       tendencia_cliques: 5,

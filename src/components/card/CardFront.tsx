@@ -17,6 +17,7 @@ import {
   Camera,
   Download,
   Share2,
+  RefreshCw,
 } from 'lucide-react'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
 import type { PublicCardData } from '@/lib/types/database'
@@ -477,9 +478,11 @@ export function CardFront({ data }: CardFrontProps) {
       {/* Footer Area */}
       <div className="flex flex-col items-center gap-1.5 pt-2 pb-1 mt-auto">
         {/* Hint */}
-        <div className="flex items-center gap-1">
-          <ChevronDown className={cn('h-3.5 w-3.5 animate-bounce', tertiaryTextClass)} />
-          <span className={cn('text-xs', tertiaryTextClass)}>Toque para ver mais</span>
+        <div className="flex items-center gap-1.5 bg-amber-400/90 hover:bg-amber-400 transition-colors px-3 py-1.5 rounded-full shadow-lg border border-amber-300">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin-slow text-amber-950" style={{ animationDuration: '4s' }} />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-950 drop-shadow-sm">
+            Clique para virar e ver o verso
+          </span>
         </div>
         
         {/* Branding Link */}
